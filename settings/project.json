@@ -8,7 +8,13 @@
     ]
   ],
   "excluded-modules": [
-    "3D Physics/Builtin"
+    "DragonBones",
+    "Spine Skeleton",
+    "3D",
+    "3D Primitive",
+    "3D Physics/cannon.js",
+    "3D Physics/Builtin",
+    "3D Particle"
   ],
   "preview-port": 7456,
   "design-resolution-width": 1080,
