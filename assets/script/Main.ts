@@ -2,16 +2,44 @@
  * @Description: 
  * @Author: hanyajun
  * @Date: 2024-06-27 10:43:11
- * @LastEditTime: 2024-07-18 20:21:23
+ * @LastEditTime: 2024-07-19 11:36:09
  */
-
 
 const { ccclass, property } = cc._decorator;
 
 @ccclass
 export default class NewClass extends cc.Component {
+    @property({
+        type: cc.Node,
+        displayName: '竖屏节点'
+    })
+    vec: cc.Node = null;
+
+    @property({
+        type: cc.Node,
+        displayName: '横屏节点'
+    })
+    hoz: cc.Node = null;
+
+    @property({
+        type: cc.Node,
+        displayName: '竖屏答案词'
+    })
+    private titleLayout: cc.Node = null;
+
+    /**竖屏 */
+    private boardBg: cc.Node = null;
+
+
+    /**横屏 */
 
     protected onLoad(): void {
+        /**竖屏 */
+        this.boardBg = this.vec.getChildByName('middle').getChildByName('boardBg');
+
+
+        /**横屏 */
+
         this.initData();
         cc.view.setResizeCallback(this.canvasChange.bind(this));
         this.canvasChange();
