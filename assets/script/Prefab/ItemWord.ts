@@ -2,7 +2,7 @@
  * @Description: 
  * @Author: hanyajun
  * @Date: 2024-07-19 14:04:07
- * @LastEditTime: 2024-07-19 20:56:23
+ * @LastEditTime: 2024-07-22 14:49:37
  */
 
 import GamePlayMgr, { IItemInfo } from "../manage/GamePlayMgr";
@@ -24,6 +24,8 @@ export default class ItemWord extends cc.Component {
 
     public char: string = null;
 
+    private isFill: boolean = null;
+
     /**
      * @description: 方块数据初始化
      */
@@ -36,6 +38,7 @@ export default class ItemWord extends cc.Component {
         this.node.name = data.point.x + "_" + data.point.y;
         this.dCoordinates = [data.point.x, data.point.y];
         this.isFillWord = false;
+        this.isFillState = false;
         let wordPosIdx: { pos: { x: number, y: number }, posIdx: { x: number, y: number } } = { pos: { x: 0, y: 0 }, posIdx: { x: 0, y: 0 } };
         wordPosIdx.pos.x = data.position.x;
         wordPosIdx.pos.y = data.position.y;
@@ -76,6 +79,14 @@ export default class ItemWord extends cc.Component {
 
     public get itemChar(): string {
         return this.char;
+    }
+
+    public set isFillState(state: boolean) {
+        this.isFill = state;
+    }
+
+    public get isFillState() {
+        return this.isFill;
     }
 
 

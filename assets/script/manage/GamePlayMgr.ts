@@ -2,7 +2,7 @@
  * @Description: 
  * @Author: hanyajun
  * @Date: 2024-07-19 13:49:52
- * @LastEditTime: 2024-07-19 21:08:06
+ * @LastEditTime: 2024-07-22 19:37:10
  */
 
 import SingletonPattern from "../core/SingletonPattern";
@@ -31,9 +31,8 @@ export default class GamePlayMgr extends SingletonPattern<GamePlayMgr>() {
     public fillCharPoxIdx: Map<string, { char: string }> = new Map();
     /**保存模式填充的答案单词 */
     public fillmodeAnswerWords: Map<string, IFillWord[]> = new Map();
-
-    public firstLineWord: Map<string, string> = new Map();
-    public finishLineWord: Map<string, string> = new Map();
+    /**完成绘画后的 item 坐标 */
+    public finishGraphicWordPos: IPoint[] = [];
 
     public saveWordColor: number[] = [];
     public wordColorRandom: number[] = [0, 1, 2, 3];
@@ -51,12 +50,19 @@ export default class GamePlayMgr extends SingletonPattern<GamePlayMgr>() {
     public ptAnswer: string[] = ['PORCO', 'GATO', 'LOBO', 'COBRA'];
     public idAnswer: string[] = ['DOMBA', 'KUDA', 'IKAN', 'BEBEK'];
 
+    public enFinishAnswer: string[] = [];
+    public esFinishAnswer: string[] = [];
+    public ptFinishAnswer: string[] = [];
+    public idFinishAnswer: string[] = [];
+
     public modeEnAnswerWords: Map<string, IFillWord[]> = new Map();
     public modeEsAnswerWords: Map<string, IFillWord[]> = new Map();
     public modePtAnswerWords: Map<string, IFillWord[]> = new Map();
     public modeIdAnswerWords: Map<string, IFillWord[]> = new Map();
 
     public fillWordPosIdx: IFillWord[] = [];
+
+    public validAngles: number[] = [0, 90, 180, -90, -180];
 
 
     /**
@@ -160,6 +166,22 @@ export default class GamePlayMgr extends SingletonPattern<GamePlayMgr>() {
         return Answer;
     }
 
+
+
+    public getLanFinishAnswer(language: string): string[] {
+        let Answer: string[] = [];
+        if (language === 'en') {
+            Answer = this.enFinishAnswer;
+        } else if (language === 'es') {
+            Answer = this.esFinishAnswer;
+        } else if (language === 'pt') {
+            Answer = this.ptFinishAnswer;
+        } else if (language === 'id') {
+            Answer = this.idFinishAnswer;
+        }
+        return Answer;
+    }
+
     public getLanAnswerWords(language: string) {
         if (language === 'en') {
             const word1: string[] = this.enAnswer[0].split('');
@@ -167,28 +189,28 @@ export default class GamePlayMgr extends SingletonPattern<GamePlayMgr>() {
             for (let i = 0; i < word1.length; i++) {
                 this.answerPos(word1[i], (word1.length - 1) - i, 4);
             }
-            this.modeEnAnswerWords.set(this.enAnswer[0], this.fillWordPosIdx);
+            this.modeEnAnswerWords.set(this.enAnswer[0], this.fillWordPosIdx.slice());
 
             const word2: string[] = this.enAnswer[1].split('');
             this.fillWordPosIdx.length = 0;
             for (let j = 0; j < word2.length; j++) {
                 this.answerPos(word2[j], 3, j);
             }
-            this.modeEnAnswerWords.set(this.enAnswer[1], this.fillWordPosIdx);
+            this.modeEnAnswerWords.set(this.enAnswer[1], this.fillWordPosIdx.slice());
 
             const word3: string[] = this.enAnswer[2].split('');
             this.fillWordPosIdx.length = 0;
             for (let k = 0; k < word3.length; k++) {
                 this.answerPos(word3[k], 0, (word3.length - 1) - k);
             }
-            this.modeEnAnswerWords.set(this.enAnswer[2], this.fillWordPosIdx);
+            this.modeEnAnswerWords.set(this.enAnswer[2], this.fillWordPosIdx.slice());
 
             const word4: string[] = this.enAnswer[3].split('');
             this.fillWordPosIdx.length = 0;
             for (let m = 0; m < word4.length; m++) {
                 this.answerPos(word4[m], 5, m);
             }
-            this.modeEnAnswerWords.set(this.enAnswer[3], this.fillWordPosIdx);
+            this.modeEnAnswerWords.set(this.enAnswer[3], this.fillWordPosIdx.slice());
 
         } else if (language === 'es') {
             const word1: string[] = this.esAnswer[0].split('');
@@ -196,28 +218,28 @@ export default class GamePlayMgr extends SingletonPattern<GamePlayMgr>() {
             for (let i = 0; i < word1.length; i++) {
                 this.answerPos(word1[i], (word1.length - 1) - i, 4);
             }
-            this.modeEsAnswerWords.set(this.esAnswer[0], this.fillWordPosIdx);
+            this.modeEsAnswerWords.set(this.esAnswer[0], this.fillWordPosIdx.slice());
 
             const word2: string[] = this.esAnswer[1].split('');
             this.fillWordPosIdx.length = 0;
             for (let j = 0; j < word2.length; j++) {
                 this.answerPos(word2[j], 3, j);
             }
-            this.modeEsAnswerWords.set(this.esAnswer[1], this.fillWordPosIdx);
+            this.modeEsAnswerWords.set(this.esAnswer[1], this.fillWordPosIdx.slice());
 
             const word3: string[] = this.esAnswer[2].split('');
             this.fillWordPosIdx.length = 0;
             for (let k = 0; k < word3.length; k++) {
                 this.answerPos(word3[k], 0, (word3.length - 1) - k);
             }
-            this.modeEsAnswerWords.set(this.esAnswer[2], this.fillWordPosIdx);
+            this.modeEsAnswerWords.set(this.esAnswer[2], this.fillWordPosIdx.slice());
 
             const word4: string[] = this.esAnswer[3].split('');
             this.fillWordPosIdx.length = 0;
             for (let m = 0; m < word4.length; m++) {
                 this.answerPos(word4[m], 5, m);
             }
-            this.modeEsAnswerWords.set(this.esAnswer[3], this.fillWordPosIdx);
+            this.modeEsAnswerWords.set(this.esAnswer[3], this.fillWordPosIdx.slice());
 
         } else if (language === 'pt') {
             const word1: string[] = this.ptAnswer[0].split('');
@@ -225,28 +247,28 @@ export default class GamePlayMgr extends SingletonPattern<GamePlayMgr>() {
             for (let i = 0; i < word1.length; i++) {
                 this.answerPos(word1[i], (word1.length - 1) - i, 4);
             }
-            this.modePtAnswerWords.set(this.ptAnswer[0], this.fillWordPosIdx);
+            this.modePtAnswerWords.set(this.ptAnswer[0], this.fillWordPosIdx.slice());
 
             const word2: string[] = this.ptAnswer[1].split('');
             this.fillWordPosIdx.length = 0;
             for (let j = 0; j < word2.length; j++) {
                 this.answerPos(word2[j], 3, j);
             }
-            this.modePtAnswerWords.set(this.ptAnswer[1], this.fillWordPosIdx);
+            this.modePtAnswerWords.set(this.ptAnswer[1], this.fillWordPosIdx.slice());
 
             const word3: string[] = this.ptAnswer[2].split('');
             this.fillWordPosIdx.length = 0;
             for (let k = 0; k < word3.length; k++) {
                 this.answerPos(word3[k], 0, (word3.length - 1) - k);
             }
-            this.modePtAnswerWords.set(this.ptAnswer[2], this.fillWordPosIdx);
+            this.modePtAnswerWords.set(this.ptAnswer[2], this.fillWordPosIdx.slice());
 
             const word4: string[] = this.ptAnswer[3].split('');
             this.fillWordPosIdx.length = 0;
             for (let m = 0; m < word4.length; m++) {
                 this.answerPos(word4[m], 5, m);
             }
-            this.modePtAnswerWords.set(this.ptAnswer[3], this.fillWordPosIdx);
+            this.modePtAnswerWords.set(this.ptAnswer[3], this.fillWordPosIdx.slice());
 
         } else if (language === 'id') {
             const word1: string[] = this.idAnswer[0].split('');
@@ -254,28 +276,28 @@ export default class GamePlayMgr extends SingletonPattern<GamePlayMgr>() {
             for (let i = 0; i < word1.length; i++) {
                 this.answerPos(word1[i], (word1.length - 1) - i, 4);
             }
-            this.modeIdAnswerWords.set(this.idAnswer[0], this.fillWordPosIdx);
+            this.modeIdAnswerWords.set(this.idAnswer[0], this.fillWordPosIdx.slice());
 
             const word2: string[] = this.idAnswer[1].split('');
             this.fillWordPosIdx.length = 0;
             for (let j = 0; j < word2.length; j++) {
                 this.answerPos(word2[j], 3, j);
             }
-            this.modeIdAnswerWords.set(this.idAnswer[1], this.fillWordPosIdx);
+            this.modeIdAnswerWords.set(this.idAnswer[1], this.fillWordPosIdx.slice());
 
             const word3: string[] = this.idAnswer[2].split('');
             this.fillWordPosIdx.length = 0;
             for (let k = 0; k < word3.length; k++) {
                 this.answerPos(word3[k], 0, (word3.length - 1) - k);
             }
-            this.modeIdAnswerWords.set(this.idAnswer[2], this.fillWordPosIdx);
+            this.modeIdAnswerWords.set(this.idAnswer[2], this.fillWordPosIdx.slice());
 
             const word4: string[] = this.idAnswer[3].split('');
             this.fillWordPosIdx.length = 0;
             for (let m = 0; m < word4.length; m++) {
                 this.answerPos(word4[m], 5, m);
             }
-            this.modeIdAnswerWords.set(this.idAnswer[3], this.fillWordPosIdx);
+            this.modeIdAnswerWords.set(this.idAnswer[3], this.fillWordPosIdx.slice());
 
         }
     }
@@ -330,6 +352,198 @@ export default class GamePlayMgr extends SingletonPattern<GamePlayMgr>() {
         if (!Array.isArray(arr) || arr.length === 0) return undefined;
         const randomIndex: number = Math.floor(Math.random() * arr.length);
         return arr[randomIndex];
+    }
+
+
+    /**
+     * @description: 判断给定的角度是否有效
+     * @return {*}
+     * @param {number} angle
+     */
+    public isValidAngle(angle: number): boolean {
+        angle = Math.floor(angle);
+        // 使用 modulo 运算来处理 angle 为负数的情况
+        angle = ((angle % 360) + 360) % 360;
+        return this.validAngles.includes(angle) || this.validAngles.includes(angle - 360);
+    }
+
+    /**
+     * @description: 计算从点 (x1, y1) 到点 (x2, y2) 的旋转角度
+     * @return {*}
+     * @param {number} x1
+     * @param {number} y1
+     * @param {number} x2
+     * @param {number} y2
+     */
+    public calculateAngle(x1: number, y1: number, x2: number, y2: number): number {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const radians = Math.atan2(dy, dx);
+        const degrees = this.radiansToDegrees(radians);
+        return degrees;
+    }
+
+    /**
+     * @description: 将弧度转换为度数
+     * @return {*}
+     * @param {number} radians
+     */
+    public radiansToDegrees(radians: number): number {
+        return radians * (180 / Math.PI);
+    }
+
+    /**
+     * @description: 计算两点的直线距离
+     * @return {*}
+     * @param {number} x1
+     * @param {number} y1
+     * @param {number} x2
+     * @param {number} y2
+     */
+    public calculateDistance(x1: number, y1: number, x2: number, y2: number): number {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    /**
+     * @description: 示例用法
+     * @return {*}
+     * @param {number} x1
+     * @param {number} y1
+     * @param {number} x2
+     * @param {number} y2
+     */
+    public checkPoints(x1: number, y1: number, x2: number, y2: number): {
+        angle: number;
+        distance: number;
+    } {
+        const angle: number = this.calculateAngle(x1, y1, x2, y2);
+
+        if (this.isValidAngle(angle)) {
+            const distance: number = this.calculateDistance(x1, y1, x2, y2);
+            let result: { angle: number, distance: number } = {
+                angle: angle,
+                distance: distance
+            }
+            return result;
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * @description: 计算 item 的四个角与中心点的角度值
+     * @return {*}
+     */
+    public calculateCornersAngles() {
+        const halfWidth = this.itemWordSize.width / 2;
+        const halfHeight = this.itemWordSize.height / 2;
+
+        const center = new cc.Vec2(0, 0);
+        const topLeft = new cc.Vec2(-halfWidth, halfHeight);
+        const topRight = new cc.Vec2(halfWidth, halfHeight);
+        const bottomLeft = new cc.Vec2(-halfWidth, -halfHeight);
+        const bottomRight = new cc.Vec2(halfWidth, -halfHeight);
+
+        const angles = {
+            topLeft: this.calculateAngle(center.x, center.y, topLeft.x, topLeft.y),
+            topRight: this.calculateAngle(center.x, center.y, topRight.x, topRight.y),
+            bottomLeft: this.calculateAngle(center.x, center.y, bottomLeft.x, bottomLeft.y),
+            bottomRight: this.calculateAngle(center.x, center.y, bottomRight.x, bottomRight.y)
+        };
+        this.validAngles.push(Math.floor(angles.topLeft), Math.floor(angles.topRight), Math.floor(angles.bottomLeft), Math.floor(angles.bottomRight));
+    }
+
+    public reverseString(str: string): string {
+        // 将字符串转换为数组
+        const array: string[] = str.split('');
+
+        // 倒序排列数组
+        const reversedArray: string[] = array.reverse();
+
+        // 将数组重新转换为字符串
+        const reversedStr: string = reversedArray.join('');
+
+        return reversedStr;
+    }
+
+    public removeAfterIndex(array: IPoint[], index: number): IPoint[] {
+        return array.splice(index + 1, array.length - index - 1);
+    }
+
+
+    /**
+     * @description: 计算两个点之间的所有坐标（直线和斜线）
+     * @return {*}
+     * @param {IPoint} start
+     * @param {IPoint} end
+     */
+    public calculateLineCoordinates(start: IPoint, end: IPoint): IPoint[] {
+        const coordinates: IPoint[] = [];
+        const x1: number = Math.round(start.x);
+        const y1: number = Math.round(start.y);
+        const x2: number = Math.round(end.x);
+        const y2: number = Math.round(end.y);
+
+        if (start.x === end.x) {
+            if ((end.y - start.y) > 0) {
+                for (let i = start.y + 1; i < end.y; i++) {
+                    coordinates.push({ x: start.x, y: i });
+                }
+            } else {
+                for (let i = end.y + 1; i < start.y; i++) {
+                    coordinates.push({ x: start.x, y: i });
+                }
+            }
+        }
+
+        if (start.y === end.y) {
+            if ((end.x - start.x) > 0) {
+                for (let i = start.x + 1; i < end.x; i++) {
+                    coordinates.push({ x: i, y: start.y });
+                }
+            } else {
+                for (let i = end.x + 1; i < start.x; i++) {
+                    coordinates.push({ x: i, y: start.y });
+                }
+            }
+        }
+
+        if (start.x !== end.x && start.y !== end.y) {
+            if ((end.x - start.x) > 0 && (end.y - start.y) > 0) {
+                let startY: number = start.y;
+                for (let i = start.x + 1; i < end.x; i++) {
+                    startY += 1;
+                    coordinates.push({ x: i, y: startY });
+                }
+            }
+
+            if ((end.x - start.x) < 0 && (end.y - start.y) < 0) {
+                let startY: number = end.y;
+                for (let i = end.x + 1; i < start.x; i++) {
+                    startY += 1;
+                    coordinates.push({ x: i, y: startY });
+                }
+            }
+
+            if ((end.x - start.x) < 0 && (end.y - start.y) > 0) {
+                let startY: number = end.y;
+                for (let i = end.x + 1; i < start.x; i++) {
+                    startY -= 1;
+                    coordinates.push({ x: i, y: startY });
+                }
+            }
+
+            if ((end.x - start.x) > 0 && (end.y - start.y) < 0) {
+                let startY: number = start.y;
+                for (let i = start.x + 1; i < end.x; i++) {
+                    startY -= 1;
+                    coordinates.push({ x: i, y: startY });
+                }
+            }
+        }
+        return coordinates;
     }
 }
 
