@@ -2,7 +2,7 @@
  * @Description: 
  * @Author: hanyajun
  * @Date: 2024-07-19 13:49:52
- * @LastEditTime: 2024-07-22 19:37:10
+ * @LastEditTime: 2024-07-23 12:52:56
  */
 
 import SingletonPattern from "../core/SingletonPattern";
@@ -34,6 +34,8 @@ export default class GamePlayMgr extends SingletonPattern<GamePlayMgr>() {
     /**完成绘画后的 item 坐标 */
     public finishGraphicWordPos: IPoint[] = [];
 
+    public rncWordAnimIdx: number[] = [0];
+
     public saveWordColor: number[] = [];
     public wordColorRandom: number[] = [0, 1, 2, 3];
     public wordLineColor: string[] = ['#9662FB', '#468AF0', '#FE8306', '#FF6745'];
@@ -49,6 +51,11 @@ export default class GamePlayMgr extends SingletonPattern<GamePlayMgr>() {
     public esAnswer: string[] = ['GANSO', 'GATO', 'RATA', 'ZORRO'];
     public ptAnswer: string[] = ['PORCO', 'GATO', 'LOBO', 'COBRA'];
     public idAnswer: string[] = ['DOMBA', 'KUDA', 'IKAN', 'BEBEK'];
+
+    public enNotFinishAnswer: string[] = ['HORSE', 'DUCK', 'BIRD', 'GOOSE'];
+    public esNotFinishAnswer: string[] = ['GANSO', 'GATO', 'RATA', 'ZORRO'];
+    public ptNotFinishAnswer: string[] = ['PORCO', 'GATO', 'LOBO', 'COBRA'];
+    public idNotFinishAnswer: string[] = ['DOMBA', 'KUDA', 'IKAN', 'BEBEK'];
 
     public enFinishAnswer: string[] = [];
     public esFinishAnswer: string[] = [];
@@ -167,6 +174,19 @@ export default class GamePlayMgr extends SingletonPattern<GamePlayMgr>() {
     }
 
 
+    public getLanNotFinishAnswer(language: string): string[] {
+        let Answer: string[] = [];
+        if (language === 'en') {
+            Answer = this.enNotFinishAnswer;
+        } else if (language === 'es') {
+            Answer = this.esNotFinishAnswer;
+        } else if (language === 'pt') {
+            Answer = this.ptNotFinishAnswer;
+        } else if (language === 'id') {
+            Answer = this.idNotFinishAnswer;
+        }
+        return Answer;
+    }
 
     public getLanFinishAnswer(language: string): string[] {
         let Answer: string[] = [];

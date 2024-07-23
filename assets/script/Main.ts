@@ -2,11 +2,11 @@
  * @Description: 
  * @Author: hanyajun
  * @Date: 2024-06-27 10:43:11
- * @LastEditTime: 2024-07-22 20:26:17
+ * @LastEditTime: 2024-07-23 13:26:40
  */
 
 import { GameItemConfig, IFillWord, IItemInfo, IPoint } from "./manage/GamePlayMgr";
-import LoadResMgr from "./manage/LoadResMgr";
+import LoadResMgr from './manage/LoadResMgr';
 import ItemWord from "./Prefab/ItemWord";
 import GamePlayMgr from './manage/GamePlayMgr';
 import ItemAnswerWord from "./Prefab/ItemAnswerWord";
@@ -48,11 +48,18 @@ export default class Main extends cc.Component {
     private twoFillPosArr: IPoint[][] = [];
     private vecFinger: cc.Node = null;
     private vecWaring: cc.Node = null;
+    private wordPos: { x: number, y: number, item: ItemWord }[] = [];
+    private fingerStreamItemNode: cc.Node = null;
+    private EncouragingWord: cc.Node = null;
+    private EncWord: cc.Sprite = null;
+    private bottom: cc.Node = null;
 
 
     /**横屏 */
 
     protected onLoad(): void {
+        LoadResMgr.ins.loadStreamItemPrefab('Prefab/StreamItem');
+        LoadResMgr.ins.loadBgImageRes(`picture/${GamePlayMgr.ins.language}`);
         GamePlayMgr.ins.getLanAnswerWords(GamePlayMgr.ins.language);
 
         /**竖屏 */
@@ -61,6 +68,9 @@ export default class Main extends cc.Component {
         this.Board = this.boardBg.getChildByName('Board');
         this.vecFinger = this.boardBg.getChildByName('vecFinger');
         this.vecWaring = this.vec.getChildByName('vecWaring');
+        this.EncouragingWord = this.vec.getChildByName('EncouragingWord');
+        this.EncWord = this.EncouragingWord.getChildByName('EncWord').getComponent(cc.Sprite);
+        this.bottom = this.vec.getChildByName('bottom');
 
         this.Board.on(cc.Node.EventType.TOUCH_START, this.onTouchStart, this);
         this.Board.on(cc.Node.EventType.TOUCH_MOVE, this.onTouchMove, this);
@@ -238,6 +248,7 @@ export default class Main extends cc.Component {
                 this.firstPos = pos;
             }
         });
+        this.StopFingerAnim();
     }
 
     private onTouchMove(event: cc.Event.EventTouch): void {
@@ -338,6 +349,7 @@ export default class Main extends cc.Component {
                     this.dealWordColor(true);
                     GamePlayMgr.ins.saveWordColor.push(this.colorIdx);
                     this.dealAnswerBoard(answer2);
+                    this.palyAncWordAnim();
                 } else {
                     this.clearMoveData();
                 }
@@ -350,6 +362,7 @@ export default class Main extends cc.Component {
         this.firstPos = null;
         GamePlayMgr.ins.finishGraphicWordPos.length = 0;
         this.twoFillPosArr.length = 0;
+        this.beginFingerAnim();
     }
 
     //#endregion
@@ -392,6 +405,8 @@ export default class Main extends cc.Component {
             const itemComp: ItemWord = GamePlayMgr.ins.mainModeItems[item.x][item.y];
             this.wordState(itemComp, false);
         });
+        // 划词错误
+        this.vecWaringAnim();
     }
 
     private dealFillData(arr: IPoint[]): void {
@@ -458,27 +473,230 @@ export default class Main extends cc.Component {
             }
             this.dealAnswerBoard(lanAnswer[0]);
             // 手指指引
+            this.beginFingerAnim();
         });
     }
 
     private dealAnswerBoard(answer: string): void {
         const answer1: string = GamePlayMgr.ins.reverseString(answer);
         const LanFinishAnswer: string[] = GamePlayMgr.ins.getLanFinishAnswer(GamePlayMgr.ins.language);
+        const LanNotFinishAnswer: string[] = GamePlayMgr.ins.getLanNotFinishAnswer(GamePlayMgr.ins.language);
+        let answerStr: string = null;
+
         for (let i = 0; i < this.titleLayout.children.length; i++) {
             const data: ItemAnswerWord = this.titleLayout.children[i].getComponent(ItemAnswerWord);
             if (!data.isFillState && answer === data.answerCn || answer1 === data.answerCn) {
                 data.isFillState = true;
                 data.setWordColor('#FFE600');
                 LanFinishAnswer.push(data.answerCn);
+                answerStr = data.answerCn;
+            }
+        }
+
+        for (let j = 0; j < LanNotFinishAnswer.length; j++) {
+            if (LanNotFinishAnswer[j] === answerStr) {
+                LanNotFinishAnswer.splice(j, 1);
             }
         }
     }
 
-    private setVecFinger(): void {
-
+    private StopFingerAnim(): void {
+        cc.Tween.stopAllByTarget(this.vecFinger);
+        this.fingerStreamItemNode.removeFromParent();
+        this.vecFinger.active = false;
     }
 
+    private beginFingerAnim(): void {
+        this.scheduleOnce(this.setVecFinger, 2);
+    }
 
+    private setVecFinger(): void {
+        const answer: Map<string, IFillWord[]> = GamePlayMgr.ins.getLanAnswerWordsPos(GamePlayMgr.ins.language);
+        const LanNotFinishAnswer: string[] = GamePlayMgr.ins.getLanNotFinishAnswer(GamePlayMgr.ins.language);
+        if (!LanNotFinishAnswer.length) {
+            return;
+        }
+        const resultWord: IFillWord[] = answer.get(LanNotFinishAnswer[0]);
+        const firstWord: { x: number; y: number; } = resultWord[0].point;
+        const endWord: { x: number; y: number; } = resultWord[resultWord.length - 1].point;
+
+        // 手指移动动画
+        const firstItemWord: ItemWord = GamePlayMgr.ins.mainModeItems[firstWord.x][firstWord.y];
+        const endItemWord: ItemWord = GamePlayMgr.ins.mainModeItems[endWord.x][endWord.y];
+        const startPos: cc.Vec2 = firstItemWord.WordItemPos;
+        const endPos: cc.Vec2 = endItemWord.WordItemPos;
+
+        let dire: number = 0;
+        if (firstItemWord.WordItemPos.x === endItemWord.WordItemPos.x) {
+            if ((endItemWord.WordItemPos.y - firstItemWord.WordItemPos.y) > 0) {
+                // 上 
+                dire = 0;
+            } else {
+                // 下
+                dire = 1;
+            }
+        }
+
+        if (firstItemWord.WordItemPos.y === endItemWord.WordItemPos.y) {
+            if ((endItemWord.WordItemPos.x - firstItemWord.WordItemPos.x) > 0) {
+                // 右 
+                dire = 2;
+            } else {
+                // 左
+                dire = 3;
+            }
+        }
+        const colorIdx: number = GamePlayMgr.ins.getWordColorRandom();
+
+        cc.Tween.stopAllByTarget(this.vecFinger);
+
+        cc.tween(this.vecFinger)
+            .set({ position: new cc.Vec3(startPos.x, startPos.y, 0) })
+            .set({ active: true })
+            .call(() => {
+                this.animInitData(resultWord);
+                this.fingerStreamItemNode = cc.instantiate(LoadResMgr.ins.StreamItemMap.get('StreamItem'));
+                this.StreamRoot.addChild(this.fingerStreamItemNode);
+                const StreamItemComp: StreamItem = this.fingerStreamItemNode.getComponent(StreamItem);
+                StreamItemComp.setPos(firstItemWord.WordItemPos);
+                StreamItemComp.setBgColor(colorIdx);
+            })
+            .delay(0.2)
+            .to(1, { position: new cc.Vec3(endPos.x, endPos.y, 0) }, {
+                onUpdate: (target: cc.Node, ratio: number) => {
+                    if (dire === 0) {
+                        for (let i = 0; i < this.wordPos.length; i++) {
+                            const data: {
+                                x: number;
+                                y: number;
+                                item: ItemWord;
+                            } = this.wordPos[i];
+                            if (target.getPosition().y >= data.y) {
+                                this.lineAnim(this.fingerStreamItemNode, firstItemWord.WordItemPos, data.item.WordItemPos);
+                                this.wordPos.splice(i, 1);
+                                break;
+                            }
+                        }
+                    } else if (dire === 1) {
+                        for (let i = 0; i < this.wordPos.length; i++) {
+                            const data: {
+                                x: number;
+                                y: number;
+                                item: ItemWord;
+                            } = this.wordPos[i];
+                            if (target.getPosition().y <= data.y) {
+                                this.lineAnim(this.fingerStreamItemNode, firstItemWord.WordItemPos, data.item.WordItemPos);
+                                this.wordPos.splice(i, 1);
+                                break;
+                            }
+                        }
+
+                    } else if (dire === 2) {
+                        for (let i = 0; i < this.wordPos.length; i++) {
+                            const data: {
+                                x: number;
+                                y: number;
+                                item: ItemWord;
+                            } = this.wordPos[i];
+                            if (target.getPosition().x >= data.x) {
+                                this.lineAnim(this.fingerStreamItemNode, firstItemWord.WordItemPos, data.item.WordItemPos);
+                                this.wordPos.splice(i, 1);
+                                break;
+                            }
+                        }
+
+                    } else if (dire === 3) {
+                        for (let i = 0; i < this.wordPos.length; i++) {
+                            const data: {
+                                x: number;
+                                y: number;
+                                item: ItemWord;
+                            } = this.wordPos[i];
+                            if (target.getPosition().x <= data.x) {
+                                this.lineAnim(this.fingerStreamItemNode, firstItemWord.WordItemPos, data.item.WordItemPos);
+                                this.wordPos.splice(i, 1);
+                                break;
+                            }
+                        }
+                    }
+                }
+            })
+            .delay(1)
+            .call(() => {
+                this.vecFinger.active = false;
+                this.fingerStreamItemNode.removeFromParent();
+            })
+            .union()
+            .repeatForever()
+            .start();
+    }
+
+    private animInitData(resultWord: IFillWord[]): void {
+        this.wordPos.length = 0;
+
+        if (resultWord) {
+            for (let idx = 1; idx < resultWord.length; idx++) {
+                const itemComp: ItemWord = GamePlayMgr.ins.mainModeItems[resultWord[idx].point.x][resultWord[idx].point.y];
+                const wordInfo: { x: number, y: number, item: ItemWord } = {
+                    x: itemComp.WordItemPos.x,
+                    y: itemComp.WordItemPos.y,
+                    item: itemComp
+                }
+                this.wordPos.push(wordInfo);
+            }
+        }
+    }
+
+    private lineAnim(StreamItemNode: cc.Node, firstWordPos: cc.Vec2, endWordPos: cc.Vec2): void {
+        const result: { angle: number; distance: number; } = GamePlayMgr.ins.checkPoints(firstWordPos?.x, firstWordPos?.y, endWordPos?.x, endWordPos?.y);
+        if (result) {
+            const StreamItemComp: StreamItem = StreamItemNode.getComponent(StreamItem);
+            StreamItemComp.setSize(result.distance);
+            StreamItemComp.setNodeRotation(result.angle);
+            StreamItemComp.setAnglePos(firstWordPos?.x, firstWordPos?.y, endWordPos?.x, endWordPos?.y);
+        }
+    }
+
+    private vecWaringAnim(): void {
+        cc.Tween.stopAllByTarget(this.vecWaring);
+        cc.tween(this.vecWaring)
+            .set({ opacity: 0 })
+            .set({ active: true })
+            .to(0.2, { opacity: 255 })
+            .to(0.2, { opacity: 0 })
+            .to(0.2, { opacity: 255 })
+            .to(0.2, { opacity: 0 })
+            .call(() => {
+                this.vecWaring.active = false;
+                this.vecWaring.opacity = 255;
+            })
+            .start();
+    }
+
+    private palyAncWordAnim(): void {
+        const picIdx: number = GamePlayMgr.ins.rncWordAnimIdx[GamePlayMgr.ins.rncWordAnimIdx.length - 1] + 1;
+        GamePlayMgr.ins.rncWordAnimIdx.push(picIdx);
+        const pic: cc.SpriteFrame = LoadResMgr.ins.EncWordMap.get(picIdx);
+        if (pic) {
+            this.EncWord.spriteFrame = pic;
+        }
+        cc.tween(this.EncouragingWord)
+            .set({ scale: 0 })
+            .set({ opacity: 255 })
+            .set({ active: true })
+            .to(0.2, { scale: 1 })
+            .delay(1)
+            .to(0.2, { opacity: 0 })
+            .call(() => {
+                this.EncouragingWord.active = false;
+            })
+            .start();
+    }
+
+    private btnAnim(): void {
+        const btnDown: cc.Node = this.bottom.getChildByName('btnDown');
+        const playLabel: cc.Label = btnDown.getChildByName('playLabel').getComponent(cc.Label);
+    }
 
     //#endregion
 
