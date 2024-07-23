@@ -2,7 +2,7 @@
  * @Description: 
  * @Author: hanyajun
  * @Date: 2024-06-27 10:43:11
- * @LastEditTime: 2024-07-23 13:26:40
+ * @LastEditTime: 2024-07-23 15:08:22
  */
 
 import { GameItemConfig, IFillWord, IItemInfo, IPoint } from "./manage/GamePlayMgr";
@@ -11,6 +11,7 @@ import ItemWord from "./Prefab/ItemWord";
 import GamePlayMgr from './manage/GamePlayMgr';
 import ItemAnswerWord from "./Prefab/ItemAnswerWord";
 import StreamItem from "./Prefab/StreamItem";
+import { DataManager } from "./manage/DataManager";
 
 const { ccclass, property } = cc._decorator;
 
@@ -34,6 +35,21 @@ export default class Main extends cc.Component {
     })
     private titleLayout: cc.Node = null;
 
+    @property({
+        type: cc.Node,
+        displayName: '横屏答案词'
+    })
+    private HozTitleLayout: cc.Node = null;
+
+    /** true: 竖屏, false: 横屏 */
+    private screnType: boolean = true;
+
+
+    private titleLyoutNode: cc.Node = null;
+    private wordBoard: cc.Node = null;
+    private AllStreamRoot: cc.Node = null;
+    private AllFinger: cc.Node = null;
+
     /**竖屏 */
     private boardBg: cc.Node = null;
     private StreamRoot: cc.Node = null;
@@ -53,9 +69,17 @@ export default class Main extends cc.Component {
     private EncouragingWord: cc.Node = null;
     private EncWord: cc.Sprite = null;
     private bottom: cc.Node = null;
+    private VecLuoDiBg: cc.Node = null;
 
 
     /**横屏 */
+    private HozLuoDiBg: cc.Node = null;
+    private HozboardBg: cc.Node = null;
+    private HozBoard: cc.Node = null;
+    private HozStreamRoot: cc.Node = null;
+    private hozFinger: cc.Node = null;
+
+
 
     protected onLoad(): void {
         LoadResMgr.ins.loadStreamItemPrefab('Prefab/StreamItem');
@@ -71,28 +95,90 @@ export default class Main extends cc.Component {
         this.EncouragingWord = this.vec.getChildByName('EncouragingWord');
         this.EncWord = this.EncouragingWord.getChildByName('EncWord').getComponent(cc.Sprite);
         this.bottom = this.vec.getChildByName('bottom');
-
-        this.Board.on(cc.Node.EventType.TOUCH_START, this.onTouchStart, this);
-        this.Board.on(cc.Node.EventType.TOUCH_MOVE, this.onTouchMove, this);
-        this.Board.on(cc.Node.EventType.TOUCH_END, this.onTouchEnd, this);
-        this.Board.on(cc.Node.EventType.TOUCH_CANCEL, this.onTouchEnd, this);
-
+        this.VecLuoDiBg = this.node.getChildByName('VecLuoDiBg');
 
         /**横屏 */
+        this.HozLuoDiBg = this.node.getChildByName('HozLuoDiBg');
+        this.HozboardBg = this.hoz.getChildByName('left').getChildByName('boardBg');
+        this.HozBoard = this.HozboardBg.getChildByName('Board');
+        this.HozStreamRoot = this.HozboardBg.getChildByName('HozStreamRoot');
+        this.hozFinger = this.HozboardBg.getChildByName('hozFinger');
 
+        /**横屏 */
         cc.view.setResizeCallback(this.canvasChange.bind(this));
         this.canvasChange();
+    }
+
+
+    /**
+     * @description: 点击事件
+     * @return {*}
+     */
+    public onClick(): void {
+        (window as any).openAppStore();
+    }
+
+    /**
+     * @description: 屏幕适配
+     * @return {*}
+     */
+    private canvasChange(): void {
+        const visibleSize: cc.Size = cc.view.getVisibleSize();
+        const designSize: cc.Size = cc.view.getDesignResolutionSize();
+        if (visibleSize.height / visibleSize.width > designSize.height / designSize.width) {
+            // 竖屏
+            cc.view.setDesignResolutionSize(1080, 1920, cc.ResolutionPolicy.FIXED_WIDTH);
+            this.vec.active = true;
+            this.hoz.active = false;
+            this.initScreenData(true);
+            // 默认设置行和列
+            GamePlayMgr.ins.levelSize = { row: 6, col: 6 };
+            this.screnType = true;
+        } else {
+            // 横屏
+            cc.view.setDesignResolutionSize(1920, 1080, cc.ResolutionPolicy.FIXED_HEIGHT);
+            this.hoz.active = true;
+            this.vec.active = false;
+            this.initScreenData(false);
+            // 默认设置行和列
+            GamePlayMgr.ins.levelSize = { row: 6, col: 6 };
+            this.screnType = false;
+        }
+    }
+
+    private initScreenData(type: boolean): void {
+        if (type) {
+            // 竖屏
+            this.titleLyoutNode = this.titleLayout;
+            this.wordBoard = this.Board;
+            this.AllStreamRoot = this.StreamRoot;
+            this.AllFinger = this.vecFinger;
+        } else {
+            // 横屏
+            this.titleLyoutNode = this.HozTitleLayout;
+            this.wordBoard = this.HozBoard;
+            this.AllStreamRoot = this.HozStreamRoot;
+            this.AllFinger = this.hozFinger;
+        }
         this.initData();
     }
 
     private initData(): void {
-        this.vecFinger.active = false;
+        this.AllFinger.active = false;
         this.vecWaring.active = false;
+        this.VecLuoDiBg.active = false;
+        this.HozLuoDiBg.active = false;
+
+        this.wordBoard.on(cc.Node.EventType.TOUCH_START, this.onTouchStart, this);
+        this.wordBoard.on(cc.Node.EventType.TOUCH_MOVE, this.onTouchMove, this);
+        this.wordBoard.on(cc.Node.EventType.TOUCH_END, this.onTouchEnd, this);
+        this.wordBoard.on(cc.Node.EventType.TOUCH_CANCEL, this.onTouchEnd, this);
 
         /**竖屏 */
         this.createGridd();
         this.createPlate();
         this.createAnswer();
+        this.btnAnim();
 
         /**横屏 */
 
@@ -115,11 +201,12 @@ export default class Main extends cc.Component {
 
         // 设置背景尺寸
         this.setNodeBgSize(GamePlayMgr.ins.levelSize.row, GamePlayMgr.ins.levelSize.col);
-        // 更新item大小
-        GamePlayMgr.ins.updateItemSize(GamePlayMgr.ins.levelSize.row, GamePlayMgr.ins.levelSize.col);
 
-        const bgWidth: number = this.Board.width;
-        const bgHeight: number = this.Board.height;
+        const bgWidth: number = this.wordBoard.width;
+        const bgHeight: number = this.wordBoard.height;
+
+        // 更新item大小
+        GamePlayMgr.ins.updateItemSize(bgWidth, bgHeight, GamePlayMgr.ins.levelSize.row, GamePlayMgr.ins.levelSize.col);
 
         // 以左下角为原点,计算第一个方块的位置
         const beginX: number = -(bgWidth / 2) + GameItemConfig.padding + (GamePlayMgr.ins.itemWordSize.width / 2);
@@ -142,7 +229,7 @@ export default class Main extends cc.Component {
      * @description: 生成题版
      */
     private createPlate(): void {
-        this.Board.removeAllChildren();
+        this.wordBoard.removeAllChildren();
         this.clearLevelData();
         let wordIdx: number = 0;
 
@@ -157,7 +244,7 @@ export default class Main extends cc.Component {
                 LoadResMgr.ins.loadItemPrefab('Prefab/ItemWord', (item: cc.Node) => {
 
                     const ItemWordNode: cc.Node = item;
-                    this.Board.addChild(ItemWordNode);
+                    this.wordBoard.addChild(ItemWordNode);
                     // 设置方块位置
                     const itemComp: ItemWord = ItemWordNode.getComponent(ItemWord);
 
@@ -191,25 +278,25 @@ export default class Main extends cc.Component {
      */
     private setNodeBgSize(row: number, col: number): void {
         if (row === col) {
-            this.Board.setContentSize(964, 1082);
+            this.wordBoard.setContentSize(this.wordBoard.width, this.wordBoard.height);
         } else if (row < col) {
-            let itemWidth: number = Math.floor((964 - ((GameItemConfig.padding * 2) + (col - 1) * GameItemConfig.spacingX)) / col);
+            let itemWidth: number = Math.floor((this.wordBoard.width - ((GameItemConfig.padding * 2) + (col - 1) * GameItemConfig.spacingX)) / col);
             let height: number = (GameItemConfig.padding * 2) + ((row - 1) * GameItemConfig.spacingY) + (itemWidth * row);
-            this.Board.setContentSize(964, height);
+            this.wordBoard.setContentSize(this.wordBoard.width, height);
         } else if (row > col) {
-            let itemWidth: number = Math.floor((964 - ((GameItemConfig.padding * 2) + (row - 1) * GameItemConfig.spacingX)) / row);
+            let itemWidth: number = Math.floor((this.wordBoard.width - ((GameItemConfig.padding * 2) + (row - 1) * GameItemConfig.spacingX)) / row);
             let width: number = (GameItemConfig.padding * 2) + (col - 1) * GameItemConfig.spacingY + (itemWidth * col);
-            this.Board.setContentSize(width, 1082);
+            this.wordBoard.setContentSize(width, this.wordBoard.height);
         }
     }
 
     private createAnswer(): void {
-        this.titleLayout.removeAllChildren();
+        this.titleLyoutNode.removeAllChildren();
         const lanAnswer: string[] = GamePlayMgr.ins.getLanAnswer(GamePlayMgr.ins.language);
         for (let i = 0; i < lanAnswer.length; i++) {
             LoadResMgr.ins.loadItemPrefab('Prefab/ItemAnswerWord', (item: cc.Node) => {
                 const ItemWordNode: cc.Node = item;
-                this.titleLayout.addChild(ItemWordNode);
+                this.titleLyoutNode.addChild(ItemWordNode);
                 const itemComp: ItemAnswerWord = ItemWordNode.getComponent(ItemAnswerWord);
                 itemComp.initData(lanAnswer[i]);
             });
@@ -227,10 +314,10 @@ export default class Main extends cc.Component {
     private onTouchStart(event: cc.Event.EventTouch): void {
         LoadResMgr.ins.loadItemPrefab('Prefab/StreamItem', (item: cc.Node) => {
             this.StreamItemNode = item;
-            this.StreamRoot.addChild(item);
+            this.AllStreamRoot.addChild(item);
             const touchUIPos: cc.Vec2 = event.getLocation();
             // 将一个 UI 节点世界坐标系下点转换到另一个 UI 节点 (局部) 空间坐标系，这个坐标系以锚点为原点
-            const localPos: cc.Vec2 = this.Board.convertToNodeSpaceAR(cc.v2(touchUIPos.x, touchUIPos.y));
+            const localPos: cc.Vec2 = this.wordBoard.convertToNodeSpaceAR(cc.v2(touchUIPos.x, touchUIPos.y));
             const pos: IPoint = GamePlayMgr.ins.getWordPosIdx(localPos);
             if (pos) {
                 // 是否已经填充了字符
@@ -254,7 +341,7 @@ export default class Main extends cc.Component {
     private onTouchMove(event: cc.Event.EventTouch): void {
         const touchUIPos: cc.Vec2 = event.getLocation();
         // 将一个 UI 节点世界坐标系下点转换到另一个 UI 节点 (局部) 空间坐标系，这个坐标系以锚点为原点
-        const localPos: cc.Vec2 = this.Board.convertToNodeSpaceAR(cc.v2(touchUIPos.x, touchUIPos.y));
+        const localPos: cc.Vec2 = this.wordBoard.convertToNodeSpaceAR(cc.v2(touchUIPos.x, touchUIPos.y));
         const pos: IPoint = GamePlayMgr.ins.getWordPosIdx(localPos);
         if (pos) {
             if (this.wordPosIdx.x === pos.x && this.wordPosIdx.y === pos.y) {
@@ -450,7 +537,7 @@ export default class Main extends cc.Component {
         }
 
         LoadResMgr.ins.loadItemPrefab('Prefab/StreamItem', (item: cc.Node) => {
-            this.StreamRoot.addChild(item);
+            this.AllStreamRoot.addChild(item);
 
             const StreamItemComp: StreamItem = item.getComponent(StreamItem);
             StreamItemComp.setPos(firstWordPos);
@@ -483,8 +570,8 @@ export default class Main extends cc.Component {
         const LanNotFinishAnswer: string[] = GamePlayMgr.ins.getLanNotFinishAnswer(GamePlayMgr.ins.language);
         let answerStr: string = null;
 
-        for (let i = 0; i < this.titleLayout.children.length; i++) {
-            const data: ItemAnswerWord = this.titleLayout.children[i].getComponent(ItemAnswerWord);
+        for (let i = 0; i < this.titleLyoutNode.children.length; i++) {
+            const data: ItemAnswerWord = this.titleLyoutNode.children[i].getComponent(ItemAnswerWord);
             if (!data.isFillState && answer === data.answerCn || answer1 === data.answerCn) {
                 data.isFillState = true;
                 data.setWordColor('#FFE600');
@@ -501,9 +588,9 @@ export default class Main extends cc.Component {
     }
 
     private StopFingerAnim(): void {
-        cc.Tween.stopAllByTarget(this.vecFinger);
+        cc.Tween.stopAllByTarget(this.AllFinger);
         this.fingerStreamItemNode.removeFromParent();
-        this.vecFinger.active = false;
+        this.AllFinger.active = false;
     }
 
     private beginFingerAnim(): void {
@@ -548,15 +635,15 @@ export default class Main extends cc.Component {
         }
         const colorIdx: number = GamePlayMgr.ins.getWordColorRandom();
 
-        cc.Tween.stopAllByTarget(this.vecFinger);
+        cc.Tween.stopAllByTarget(this.AllFinger);
 
-        cc.tween(this.vecFinger)
+        cc.tween(this.AllFinger)
             .set({ position: new cc.Vec3(startPos.x, startPos.y, 0) })
             .set({ active: true })
             .call(() => {
                 this.animInitData(resultWord);
                 this.fingerStreamItemNode = cc.instantiate(LoadResMgr.ins.StreamItemMap.get('StreamItem'));
-                this.StreamRoot.addChild(this.fingerStreamItemNode);
+                this.AllStreamRoot.addChild(this.fingerStreamItemNode);
                 const StreamItemComp: StreamItem = this.fingerStreamItemNode.getComponent(StreamItem);
                 StreamItemComp.setPos(firstItemWord.WordItemPos);
                 StreamItemComp.setBgColor(colorIdx);
@@ -623,7 +710,7 @@ export default class Main extends cc.Component {
             })
             .delay(1)
             .call(() => {
-                this.vecFinger.active = false;
+                this.AllFinger.active = false;
                 this.fingerStreamItemNode.removeFromParent();
             })
             .union()
@@ -689,6 +776,9 @@ export default class Main extends cc.Component {
             .to(0.2, { opacity: 0 })
             .call(() => {
                 this.EncouragingWord.active = false;
+                if (GamePlayMgr.ins.rncWordAnimIdx.length === 4) {
+                    this.entryLuoDi();
+                }
             })
             .start();
     }
@@ -696,58 +786,34 @@ export default class Main extends cc.Component {
     private btnAnim(): void {
         const btnDown: cc.Node = this.bottom.getChildByName('btnDown');
         const playLabel: cc.Label = btnDown.getChildByName('playLabel').getComponent(cc.Label);
+        const lanData = DataManager[GamePlayMgr.ins.language];
+        playLabel.string = lanData.CTA;
+        cc.tween(btnDown)
+            .set({ scale: 0.8 })
+            .to(0.5, { scale: 1 })
+            .to(0.5, { scale: 0.8 })
+            .union()
+            .repeatForever()
+            .start();
+    }
+
+    private entryLuoDi(): void {
+        this.vec.active = false;
+        this.VecLuoDiBg.active = true;
+        const btnLuoDi: cc.Node = this.VecLuoDiBg.getChildByName('btnLuoDi');
+        const playLuoDiLabel: cc.Label = btnLuoDi.getChildByName('playLuoDiLabel').getComponent(cc.Label);
+        const lanData = DataManager[GamePlayMgr.ins.language];
+        playLuoDiLabel.string = lanData.CTALuoDi;
+        cc.tween(btnLuoDi)
+            .set({ scale: 0.8 })
+            .to(0.5, { scale: 1 })
+            .to(0.5, { scale: 0.8 })
+            .union()
+            .repeatForever()
+            .start();
     }
 
     //#endregion
-
-
-    /**
-     * @description: 点击事件
-     * @return {*}
-     */
-    public onClick(): void {
-        (window as any).openAppStore();
-    }
-
-    /**
-     * @description: 屏幕适配
-     * @return {*}
-     */
-    private canvasChange(): void {
-        const visibleSize: cc.Size = cc.view.getVisibleSize();
-        const designSize: cc.Size = cc.view.getDesignResolutionSize();
-        if (visibleSize.height / visibleSize.width > designSize.height / designSize.width) {
-            // 竖屏
-            cc.view.setDesignResolutionSize(1080, 1920, cc.ResolutionPolicy.FIXED_WIDTH);
-            // this.vec.active = true;
-            // this.hoz.active = false;
-            this.fingerAnimation(true);
-            // 默认设置行和列
-            GamePlayMgr.ins.levelSize = { row: 6, col: 6 };
-        } else {
-            // 横屏
-            cc.view.setDesignResolutionSize(1920, 1080, cc.ResolutionPolicy.FIXED_HEIGHT);
-            // this.hoz.active = true;
-            // this.vec.active = false;
-            this.fingerAnimation(false);
-        }
-    }
-
-    private fingerAnimation(type: boolean): void {
-        if (type) {
-            // 竖屏
-            // this.vecAnim.play('vecAnimation');
-            // this.hozAnim.stop();
-        } else {
-            // 横屏
-            // this.vecAnim.stop();
-            // this.hozAnim.play('hozAnimation');
-        }
-        this.schedule(() => {
-            this.unscheduleAllCallbacks();
-            // this.onClick();
-        }, 22);
-    }
 
 
     protected onDestroy(): void {

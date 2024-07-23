@@ -77,17 +77,17 @@ export default class GamePlayMgr extends SingletonPattern<GamePlayMgr>() {
      * @param {number}
      * @return {*}
      */
-    public updateItemSize(row: number, col: number) {
+    public updateItemSize(BoardWidth: number, BoardHeight: number, row: number, col: number) {
         let itemWidth: number = null;
         let itemHeight: number = null;
         if (row === col) {
-            itemWidth = Math.floor((964 - ((GameItemConfig.padding * 2) + (col - 1) * GameItemConfig.spacingX)) / col);
-            itemHeight = Math.floor((1082 - ((GameItemConfig.padding * 2) + (row - 1) * GameItemConfig.spacingX)) / row);
+            itemWidth = Math.floor((BoardWidth - ((GameItemConfig.padding * 2) + (col - 1) * GameItemConfig.spacingX)) / col);
+            itemHeight = Math.floor((BoardHeight - ((GameItemConfig.padding * 2) + (row - 1) * GameItemConfig.spacingX)) / row);
 
         } else if (row < col) {
-            itemWidth = Math.floor((964 - ((GameItemConfig.padding * 2) + (col - 1) * GameItemConfig.spacingX)) / col);
+            itemWidth = Math.floor((BoardWidth - ((GameItemConfig.padding * 2) + (col - 1) * GameItemConfig.spacingX)) / col);
         } else if (row > col) {
-            itemWidth = Math.floor((964 - ((GameItemConfig.padding * 2) + (row - 1) * GameItemConfig.spacingX)) / row);
+            itemWidth = Math.floor((BoardWidth - ((GameItemConfig.padding * 2) + (row - 1) * GameItemConfig.spacingX)) / row);
         }
         this.itemWordSize = { width: itemWidth, height: itemHeight };
     }
