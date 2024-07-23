@@ -2,7 +2,7 @@
  * @Description: 
  * @Author: hanyajun
  * @Date: 2024-07-19 14:04:07
- * @LastEditTime: 2024-07-22 14:49:37
+ * @LastEditTime: 2024-07-23 22:36:14
  */
 
 import GamePlayMgr, { IItemInfo } from "../manage/GamePlayMgr";
@@ -19,7 +19,7 @@ export default class ItemWord extends cc.Component {
     /**单词内容 */
     public itemInfo: IItemInfo = null;
 
-    private data: { position: cc.Vec2, size: { width: number; height: number; }, point: { x: number, y: number } } = null;
+    private data: { position: cc.Vec2, size: { width: number; height: number; }, point: { x: number, y: number }, screnType?: boolean } = null;
     private word: cc.Label = null;
 
     public char: string = null;
@@ -29,7 +29,7 @@ export default class ItemWord extends cc.Component {
     /**
      * @description: 方块数据初始化
      */
-    public initData(data: { position: cc.Vec2, size: { width: number; height: number; }, point: { x: number, y: number } }): void {
+    public initData(data: { position: cc.Vec2, size: { width: number; height: number; }, point: { x: number, y: number }, screnType?: boolean }): void {
         this.data = data;
         this.node.setPosition(data.position.x, data.position.y);
         this.node.setContentSize(data.size.width, data.size.height);
@@ -39,12 +39,6 @@ export default class ItemWord extends cc.Component {
         this.dCoordinates = [data.point.x, data.point.y];
         this.isFillWord = false;
         this.isFillState = false;
-        let wordPosIdx: { pos: { x: number, y: number }, posIdx: { x: number, y: number } } = { pos: { x: 0, y: 0 }, posIdx: { x: 0, y: 0 } };
-        wordPosIdx.pos.x = data.position.x;
-        wordPosIdx.pos.y = data.position.y;
-        wordPosIdx.posIdx.x = data.point.x;
-        wordPosIdx.posIdx.y = data.point.y;
-        GamePlayMgr.ins.wordPosIdx.push(wordPosIdx);
         this.setSize();
     }
 
@@ -95,14 +89,17 @@ export default class ItemWord extends cc.Component {
      * @return {*}
      */
     private setSize(): void {
-        let size: {
-            width: number;
-            height: number;
-        } = GamePlayMgr.ins.itemWordSize;
+
         this.word.node.setPosition(0, 0, 0);
-        // 100, 40; 80, 30; 60, 20
-        let fontSize: number = Math.max(Math.floor(size.width / 1.5), 40);
-        this.word.fontSize = 100;
-        this.word.lineHeight = 100;
+
+        let sizeFontVal: number = 100;
+        if (this.data.screnType) {
+            sizeFontVal = 100;
+        } else {
+            sizeFontVal = 70;
+        }
+
+        this.word.fontSize = sizeFontVal;
+        this.word.lineHeight = sizeFontVal;
     }
 }

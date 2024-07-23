@@ -2,9 +2,10 @@
  * @Description: 
  * @Author: hanyajun
  * @Date: 2024-07-19 13:49:52
- * @LastEditTime: 2024-07-23 12:52:56
+ * @LastEditTime: 2024-07-23 22:30:09
  */
 
+import EventManager from "../core/EventManager";
 import SingletonPattern from "../core/SingletonPattern";
 import ItemWord from "../Prefab/ItemWord";
 
@@ -13,17 +14,9 @@ const { ccclass, property } = cc._decorator;
 
 export default class GamePlayMgr extends SingletonPattern<GamePlayMgr>() {
     /**关卡尺寸 */
-    private _levelSize: { row: number, col: number } = {} as any;
+    private _levelSize: { row: number, col: number } = { row: 6, col: 6 } as any;
     /**方块坐标：标记矩阵中每个格子位置处的坐标点 */
     public positionMap: cc.Vec2[][] = [];
-    /**item 尺寸 */
-    public itemWordSize: { width: number, height: number } = {} as any;
-    /**在创建关卡的时候需要遍历棋盘，就在那个时候一起创建，避免重复一次遍历: 关卡数据 */
-    public wordItemInfo: IItemInfo[][] = [];
-    /** 所有节点 用坐标去取 items[x][y] */
-    public mainModeItems: ItemWord[][] = [];
-    /**单词位置坐标, 坐标索引 */
-    public wordPosIdx: { pos: { x: number, y: number }, posIdx: { x: number, y: number } }[] = [];
 
     public mode: number = 1;
 
@@ -33,6 +26,11 @@ export default class GamePlayMgr extends SingletonPattern<GamePlayMgr>() {
     public fillmodeAnswerWords: Map<string, IFillWord[]> = new Map();
     /**完成绘画后的 item 坐标 */
     public finishGraphicWordPos: IPoint[] = [];
+
+    public defaultColorIdx: number = null;
+    public colorIdx: number = null;
+    public answer2: string = null;
+    public eventManager: EventManager = null;
 
     public rncWordAnimIdx: number[] = [0];
 
@@ -68,61 +66,6 @@ export default class GamePlayMgr extends SingletonPattern<GamePlayMgr>() {
     public modeIdAnswerWords: Map<string, IFillWord[]> = new Map();
 
     public fillWordPosIdx: IFillWord[] = [];
-
-    public validAngles: number[] = [0, 90, 180, -90, -180];
-
-
-    /**
-     * @description: 更新item大小
-     * @param {number}
-     * @return {*}
-     */
-    public updateItemSize(BoardWidth: number, BoardHeight: number, row: number, col: number) {
-        let itemWidth: number = null;
-        let itemHeight: number = null;
-        if (row === col) {
-            itemWidth = Math.floor((BoardWidth - ((GameItemConfig.padding * 2) + (col - 1) * GameItemConfig.spacingX)) / col);
-            itemHeight = Math.floor((BoardHeight - ((GameItemConfig.padding * 2) + (row - 1) * GameItemConfig.spacingX)) / row);
-
-        } else if (row < col) {
-            itemWidth = Math.floor((BoardWidth - ((GameItemConfig.padding * 2) + (col - 1) * GameItemConfig.spacingX)) / col);
-        } else if (row > col) {
-            itemWidth = Math.floor((BoardWidth - ((GameItemConfig.padding * 2) + (row - 1) * GameItemConfig.spacingX)) / row);
-        }
-        this.itemWordSize = { width: itemWidth, height: itemHeight };
-    }
-
-
-    /**
- * @description: 获取当前触摸选中的单词 item
- * @param {cc} localPos
- * @return {*}
- */
-    public getWordPosIdx(localPos: cc.Vec2): IPoint {
-        if (this.wordPosIdx.length) {
-            for (let i = 0; i < this.wordPosIdx.length; i++) {
-                let itemWord: {
-                    pos: {
-                        x: number;
-                        y: number;
-                    };
-                    posIdx: {
-                        x: number;
-                        y: number;
-                    };
-                } = this.wordPosIdx[i];
-                const minX: number = itemWord.pos.x - (this.itemWordSize.width / 2);
-                const maxX: number = itemWord.pos.x + (this.itemWordSize.width / 2);
-                const minY: number = itemWord.pos.y - (this.itemWordSize.height / 2);
-                const maxY: number = itemWord.pos.y + (this.itemWordSize.height / 2);
-                if (localPos.x >= minX && localPos.x <= maxX) {
-                    if (localPos.y >= minY && localPos.y <= maxY) {
-                        return itemWord.posIdx;
-                    }
-                }
-            }
-        }
-    }
 
     /**
      * @description: 获取地图尺寸
@@ -359,6 +302,10 @@ export default class GamePlayMgr extends SingletonPattern<GamePlayMgr>() {
             num = this.getRandomFromArray([0, 1, 2, 3]);
         }
 
+        if (num === null || num === undefined) {
+            num = 0;
+        }
+
         return num;
     }
 
@@ -372,35 +319,6 @@ export default class GamePlayMgr extends SingletonPattern<GamePlayMgr>() {
         if (!Array.isArray(arr) || arr.length === 0) return undefined;
         const randomIndex: number = Math.floor(Math.random() * arr.length);
         return arr[randomIndex];
-    }
-
-
-    /**
-     * @description: 判断给定的角度是否有效
-     * @return {*}
-     * @param {number} angle
-     */
-    public isValidAngle(angle: number): boolean {
-        angle = Math.floor(angle);
-        // 使用 modulo 运算来处理 angle 为负数的情况
-        angle = ((angle % 360) + 360) % 360;
-        return this.validAngles.includes(angle) || this.validAngles.includes(angle - 360);
-    }
-
-    /**
-     * @description: 计算从点 (x1, y1) 到点 (x2, y2) 的旋转角度
-     * @return {*}
-     * @param {number} x1
-     * @param {number} y1
-     * @param {number} x2
-     * @param {number} y2
-     */
-    public calculateAngle(x1: number, y1: number, x2: number, y2: number): number {
-        const dx = x2 - x1;
-        const dy = y2 - y1;
-        const radians = Math.atan2(dy, dx);
-        const degrees = this.radiansToDegrees(radians);
-        return degrees;
     }
 
     /**
@@ -424,55 +342,6 @@ export default class GamePlayMgr extends SingletonPattern<GamePlayMgr>() {
         const dx = x2 - x1;
         const dy = y2 - y1;
         return Math.sqrt(dx * dx + dy * dy);
-    }
-
-    /**
-     * @description: 示例用法
-     * @return {*}
-     * @param {number} x1
-     * @param {number} y1
-     * @param {number} x2
-     * @param {number} y2
-     */
-    public checkPoints(x1: number, y1: number, x2: number, y2: number): {
-        angle: number;
-        distance: number;
-    } {
-        const angle: number = this.calculateAngle(x1, y1, x2, y2);
-
-        if (this.isValidAngle(angle)) {
-            const distance: number = this.calculateDistance(x1, y1, x2, y2);
-            let result: { angle: number, distance: number } = {
-                angle: angle,
-                distance: distance
-            }
-            return result;
-        } else {
-            return null;
-        }
-    }
-
-    /**
-     * @description: 计算 item 的四个角与中心点的角度值
-     * @return {*}
-     */
-    public calculateCornersAngles() {
-        const halfWidth = this.itemWordSize.width / 2;
-        const halfHeight = this.itemWordSize.height / 2;
-
-        const center = new cc.Vec2(0, 0);
-        const topLeft = new cc.Vec2(-halfWidth, halfHeight);
-        const topRight = new cc.Vec2(halfWidth, halfHeight);
-        const bottomLeft = new cc.Vec2(-halfWidth, -halfHeight);
-        const bottomRight = new cc.Vec2(halfWidth, -halfHeight);
-
-        const angles = {
-            topLeft: this.calculateAngle(center.x, center.y, topLeft.x, topLeft.y),
-            topRight: this.calculateAngle(center.x, center.y, topRight.x, topRight.y),
-            bottomLeft: this.calculateAngle(center.x, center.y, bottomLeft.x, bottomLeft.y),
-            bottomRight: this.calculateAngle(center.x, center.y, bottomRight.x, bottomRight.y)
-        };
-        this.validAngles.push(Math.floor(angles.topLeft), Math.floor(angles.topRight), Math.floor(angles.bottomLeft), Math.floor(angles.bottomRight));
     }
 
     public reverseString(str: string): string {
@@ -501,6 +370,9 @@ export default class GamePlayMgr extends SingletonPattern<GamePlayMgr>() {
      */
     public calculateLineCoordinates(start: IPoint, end: IPoint): IPoint[] {
         const coordinates: IPoint[] = [];
+        if (!start) {
+            return coordinates;
+        }
         const x1: number = Math.round(start.x);
         const y1: number = Math.round(start.y);
         const x2: number = Math.round(end.x);
