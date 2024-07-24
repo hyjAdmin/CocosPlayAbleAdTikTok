@@ -2,7 +2,7 @@
  * @Description: 
  * @Author: hanyajun
  * @Date: 2024-07-19 13:49:52
- * @LastEditTime: 2024-07-23 22:30:09
+ * @LastEditTime: 2024-07-24 10:38:49
  */
 
 import EventManager from "../core/EventManager";
@@ -15,8 +15,6 @@ const { ccclass, property } = cc._decorator;
 export default class GamePlayMgr extends SingletonPattern<GamePlayMgr>() {
     /**关卡尺寸 */
     private _levelSize: { row: number, col: number } = { row: 6, col: 6 } as any;
-    /**方块坐标：标记矩阵中每个格子位置处的坐标点 */
-    public positionMap: cc.Vec2[][] = [];
 
     public mode: number = 1;
 
@@ -26,6 +24,10 @@ export default class GamePlayMgr extends SingletonPattern<GamePlayMgr>() {
     public fillmodeAnswerWords: Map<string, IFillWord[]> = new Map();
     /**完成绘画后的 item 坐标 */
     public finishGraphicWordPos: IPoint[] = [];
+    public firstWordPos: IPoint = {} as any;
+    public endWordPos: IPoint = {} as any;
+    /** true: 竖屏, false: 横屏 */
+    public screnType: boolean = true;
 
     public defaultColorIdx: number = null;
     public colorIdx: number = null;

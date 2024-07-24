@@ -2,7 +2,7 @@
  * @Description: 
  * @Author: hanyajun
  * @Date: 2024-06-27 10:43:11
- * @LastEditTime: 2024-07-23 22:39:18
+ * @LastEditTime: 2024-07-24 11:22:27
  */
 
 import { GameItemConfig, IFillWord, IItemInfo, IPoint } from "./manage/GamePlayMgr";
@@ -38,9 +38,6 @@ export default class Main extends cc.Component {
     private VecLuoDiBg: cc.Node = null;
     private HozLuoDiBg: cc.Node = null;
     private background: cc.Node = null;
-
-    /** true: 竖屏, false: 横屏 */
-    private screnType: boolean = true;
 
     protected onLoad(): void {
         LoadResMgr.ins.loadStreamItemPrefab('Prefab/StreamItem');
@@ -103,22 +100,53 @@ export default class Main extends cc.Component {
             this.vec.active = true;
             this.hoz.active = false;
             this.initScreenData(true);
-            this.screnType = true;
+            GamePlayMgr.ins.screnType = true;
+            this.scheduleOnce(() => {
+                const Canvas: cc.Canvas = this.node.getComponent(cc.Canvas);
+                Canvas.designResolution.width = 1080;
+                Canvas.designResolution.height = 1920;
+                Canvas.fitWidth = true;
+                Canvas.fitHeight = false;
+                this.node.getComponent(cc.Widget).updateAlignment();
+            });
         } else {
             // 横屏
             cc.view.setDesignResolutionSize(1920, 1080, cc.ResolutionPolicy.FIXED_HEIGHT);
             this.hoz.active = true;
             this.vec.active = false;
             this.initScreenData(false);
-            this.screnType = false;
+            GamePlayMgr.ins.screnType = false;
+            this.scheduleOnce(() => {
+                const Canvas: cc.Canvas = this.node.getComponent(cc.Canvas);
+                Canvas.designResolution.width = 1920;
+                Canvas.designResolution.height = 1080;
+                Canvas.fitWidth = false;
+                Canvas.fitHeight = true;
+                this.node.getComponent(cc.Widget).updateAlignment();
+            });
         }
+
+        this.scheduleOnce(() => {
+            const background: cc.Sprite = this.background.getComponent(cc.Sprite);
+            background.sizeMode = cc.Sprite.SizeMode.TRIMMED;
+
+            const VecLuoDiBg: cc.Sprite = this.VecLuoDiBg.getComponent(cc.Sprite);
+            VecLuoDiBg.sizeMode = cc.Sprite.SizeMode.TRIMMED;
+
+            const HozLuoDiBg: cc.Sprite = this.HozLuoDiBg.getComponent(cc.Sprite);
+            HozLuoDiBg.sizeMode = cc.Sprite.SizeMode.TRIMMED;
+        });
     }
 
     private initScreenData(type: boolean): void {
         if (type) {
             // 竖屏
+            this.VecMainComp.StopFingerAnim();
+            this.VecMainComp.beginFingerAnim();
         } else {
             // 横屏
+            this.HozMainComp.StopFingerAnim();
+            this.HozMainComp.beginFingerAnim();
         }
     }
 

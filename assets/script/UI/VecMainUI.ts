@@ -2,7 +2,7 @@
  * @Description: 
  * @Author: hanyajun
  * @Date: 2024-07-23 17:55:32
- * @LastEditTime: 2024-07-23 22:40:46
+ * @LastEditTime: 2024-07-24 11:30:43
  */
 
 import { GameItemConfig, IFillWord, IItemInfo, IPoint } from "../manage/GamePlayMgr";
@@ -50,7 +50,6 @@ export default class VecMainUI extends cc.Component {
     public mainModeItems: ItemWord[][] = [];
     private wordPos: { x: number, y: number, item: ItemWord }[] = [];
     private fingerStreamItemNode: cc.Node = null;
-    private firstWordPos: IPoint = {} as any;
     private firstPos: IPoint = null;
     private lineAngle: number = null;
     private twoFillPosArr: IPoint[][] = [];
@@ -61,6 +60,9 @@ export default class VecMainUI extends cc.Component {
     /**单词位置坐标, 坐标索引 */
     public wordPosIndex: { pos: { x: number, y: number }, posIdx: { x: number, y: number } }[] = [];
     public validAngles: number[] = [0, 90, 180, -90, -180];
+    /**方块坐标：标记矩阵中每个格子位置处的坐标点 */
+    public positionMap: cc.Vec2[][] = [];
+    private firstWordPos: IPoint = {} as any;
 
     private StreamItemNode: cc.Node = null;
     private boardBg: cc.Node = null;
@@ -112,7 +114,7 @@ export default class VecMainUI extends cc.Component {
      */
     private createGridd(): void {
         // 先清除后设置
-        GamePlayMgr.ins.positionMap.length = 0;
+        this.positionMap.length = 0;
 
         // 设置背景尺寸
         this.setNodeBgSize(GamePlayMgr.ins.levelSize.row, GamePlayMgr.ins.levelSize.col);
@@ -136,7 +138,7 @@ export default class VecMainUI extends cc.Component {
                 let x: number = beginX + r * (this.itemWordSize.width + GameItemConfig.padding);
                 columnSet.push(new cc.Vec2(x, y));
             }
-            GamePlayMgr.ins.positionMap.push(columnSet);
+            this.positionMap.push(columnSet);
         }
     }
 
@@ -172,10 +174,10 @@ export default class VecMainUI extends cc.Component {
                     this.wordItemInfo[c][r] = charItemInfo;
                     this.mainModeItems[c][r] = itemComp;
 
-                    itemComp.initData({ position: GamePlayMgr.ins.positionMap[r][c], size: this.itemWordSize, point: { x: c, y: r }, screnType: true });
+                    itemComp.initData({ position: this.positionMap[r][c], size: this.itemWordSize, point: { x: c, y: r }, screnType: true });
                     let wordPosIdx: { pos: { x: number, y: number }, posIdx: { x: number, y: number } } = { pos: { x: 0, y: 0 }, posIdx: { x: 0, y: 0 } };
-                    wordPosIdx.pos.x = GamePlayMgr.ins.positionMap[r][c].x;
-                    wordPosIdx.pos.y = GamePlayMgr.ins.positionMap[r][c].y;
+                    wordPosIdx.pos.x = this.positionMap[r][c].x;
+                    wordPosIdx.pos.y = this.positionMap[r][c].y;
                     wordPosIdx.posIdx.x = c;
                     wordPosIdx.posIdx.y = r;
                     this.wordPosIndex.push(wordPosIdx);
@@ -303,6 +305,7 @@ export default class VecMainUI extends cc.Component {
                 GamePlayMgr.ins.colorIdx = GamePlayMgr.ins.getWordColorRandom();
                 StreamItemComp.setBgColor(GamePlayMgr.ins.colorIdx);
                 this.firstWordPos = { x: WordItemPos.x, y: WordItemPos.y };
+                GamePlayMgr.ins.firstWordPos = { x: pos.x, y: pos.y };
                 this.wordState(itemComp, true);
                 GamePlayMgr.ins.finishGraphicWordPos.push(pos);
                 this.firstPos = pos;
@@ -396,6 +399,9 @@ export default class VecMainUI extends cc.Component {
                 const itemComp: ItemWord = this.mainModeItems[item.x][item.y];
                 notAnswerWord.push(itemComp.itemChar);
             });
+
+            const finRes: IPoint = GamePlayMgr.ins.finishGraphicWordPos[GamePlayMgr.ins.finishGraphicWordPos.length - 1];
+            GamePlayMgr.ins.endWordPos = { x: finRes.x, y: finRes.y };
 
             const lanAnswer: string[] = GamePlayMgr.ins.getLanAnswer(GamePlayMgr.ins.language);
             const LanFinishAnswer: string[] = GamePlayMgr.ins.getLanFinishAnswer(GamePlayMgr.ins.language);
@@ -525,9 +531,55 @@ export default class VecMainUI extends cc.Component {
 
     private wordSuccess(): void {
         this.dealWordColor(true);
-        GamePlayMgr.ins.saveWordColor.push(GamePlayMgr.ins.colorIdx);
+        if (!GamePlayMgr.ins.screnType) {
+            this.otherWordSuccess();
+        }
+        if (GamePlayMgr.ins.saveWordColor.indexOf(GamePlayMgr.ins.colorIdx) === -1) {
+            GamePlayMgr.ins.saveWordColor.push(GamePlayMgr.ins.colorIdx);
+        }
         this.dealAnswerBoard(GamePlayMgr.ins.answer2);
         this.palyAncWordAnim();
+    }
+
+    private otherWordSuccess(): void {
+        const firstWordComp: ItemWord = this.mainModeItems[GamePlayMgr.ins.firstWordPos.x][GamePlayMgr.ins.firstWordPos.y];
+        const endWordComp: ItemWord = this.mainModeItems[GamePlayMgr.ins.endWordPos.x][GamePlayMgr.ins.endWordPos.y];
+
+
+        let firstWordPos: cc.Vec2 = null;
+        let endWordPos: cc.Vec2 = null;
+        if (firstWordComp) {
+            firstWordPos = firstWordComp.WordItemPos;
+        }
+
+        if (endWordComp) {
+            endWordPos = endWordComp.WordItemPos;
+        }
+
+        if (!firstWordPos || !endWordPos) {
+            return;
+        }
+
+        LoadResMgr.ins.loadItemPrefab('Prefab/StreamItem', (item: cc.Node) => {
+            this.StreamRoot.addChild(item);
+
+            const StreamItemComp: StreamItem = item.getComponent(StreamItem);
+            StreamItemComp.setPos(firstWordPos);
+
+            StreamItemComp.setBgColor(GamePlayMgr.ins.colorIdx);
+            const saveWordColor: number[] = GamePlayMgr.ins.saveWordColor;
+            if (saveWordColor.indexOf(GamePlayMgr.ins.colorIdx) === -1) {
+                GamePlayMgr.ins.saveWordColor.push(GamePlayMgr.ins.colorIdx);
+            }
+
+            const result: { angle: number; distance: number; } = this.checkPoints(firstWordPos?.x, firstWordPos?.y, endWordPos?.x, endWordPos?.y);
+            if (result) {
+                const StreamItemComp: StreamItem = item.getComponent(StreamItem);
+                StreamItemComp.setSize(result.distance);
+                StreamItemComp.setNodeRotation(result.angle);
+                StreamItemComp.setAnglePos(firstWordPos?.x, firstWordPos?.y, endWordPos?.x, endWordPos?.y);
+            }
+        });
     }
 
     private palyAncWordAnim(): void {
@@ -549,7 +601,8 @@ export default class VecMainUI extends cc.Component {
             .to(0.2, { opacity: 0 })
             .call(() => {
                 this.EncouragingWord.active = false;
-                if (GamePlayMgr.ins.rncWordAnimIdx.length === 4) {
+                const LanFinishAnswer: string[] = GamePlayMgr.ins.getLanFinishAnswer(GamePlayMgr.ins.language);
+                if (LanFinishAnswer.length >= 4) {
                     GamePlayMgr.ins.eventManager.emit('entryLuoDi', { state: true });
                 }
             })
@@ -704,7 +757,7 @@ export default class VecMainUI extends cc.Component {
         }
     }
 
-    private beginFingerAnim(): void {
+    public beginFingerAnim(): void {
         this.scheduleOnce(this.setVecFinger, 2);
     }
 
