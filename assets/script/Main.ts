@@ -2,7 +2,7 @@
  * @Description: 
  * @Author: hanyajun
  * @Date: 2024-06-27 10:43:11
- * @LastEditTime: 2024-07-24 14:25:48
+ * @LastEditTime: 2024-07-25 14:21:07
  */
 
 import { GameItemConfig, IFillWord, IItemInfo, IPoint } from "./manage/GamePlayMgr";
@@ -40,6 +40,9 @@ export default class Main extends cc.Component {
     private background: cc.Node = null;
 
     protected onLoad(): void {
+        const music: cc.AudioSource = this.node.getComponent(cc.AudioSource);
+        music.play();
+
         LoadResMgr.ins.loadStreamItemPrefab('Prefab/StreamItem');
         LoadResMgr.ins.loadBgImageRes(`picture/${GamePlayMgr.ins.language}`);
         GamePlayMgr.ins.getLanAnswerWords(GamePlayMgr.ins.language);
@@ -88,6 +91,16 @@ export default class Main extends cc.Component {
     }
 
     /**
+     * @description: 点击事件
+     * @return {*}
+     */
+    public onClickMain(): void {
+        if (GamePlayMgr.ins.mode === 3) {
+            this.entryLuoDi(GamePlayMgr.ins.screnType);
+        }
+    }
+
+    /**
      * @description: 屏幕适配
      * @return {*}
      */
@@ -101,6 +114,15 @@ export default class Main extends cc.Component {
             this.hoz.active = false;
             this.initScreenData(true);
             GamePlayMgr.ins.screnType = true;
+
+
+            // 计算宽度和高度的比例
+            const widthRatio: number = visibleSize.width / 1080;
+            const heightRatio: number = visibleSize.height / 1920;
+            // 取较大的比例作为背景图的缩放比例
+            const scale: number = Math.min(widthRatio, heightRatio);
+            this.vec.scale = scale;
+
         } else {
             // 横屏
             cc.view.setDesignResolutionSize(1920, 1080, cc.ResolutionPolicy.FIXED_HEIGHT);
@@ -108,6 +130,13 @@ export default class Main extends cc.Component {
             this.vec.active = false;
             this.initScreenData(false);
             GamePlayMgr.ins.screnType = false;
+
+            // 计算宽度和高度的比例
+            const widthRatio: number = visibleSize.width / 1920;
+            const heightRatio: number = visibleSize.height / 1080;
+            // 取较大的比例作为背景图的缩放比例
+            const scale: number = Math.max(widthRatio, heightRatio);
+            this.hoz.scale = scale;
         }
     }
 

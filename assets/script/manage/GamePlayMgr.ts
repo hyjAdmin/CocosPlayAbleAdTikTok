@@ -2,7 +2,7 @@
  * @Description: 
  * @Author: hanyajun
  * @Date: 2024-07-19 13:49:52
- * @LastEditTime: 2024-07-24 10:38:49
+ * @LastEditTime: 2024-07-25 14:48:53
  */
 
 import EventManager from "../core/EventManager";
@@ -16,7 +16,7 @@ export default class GamePlayMgr extends SingletonPattern<GamePlayMgr>() {
     /**关卡尺寸 */
     private _levelSize: { row: number, col: number } = { row: 6, col: 6 } as any;
 
-    public mode: number = 1;
+    public mode: number = 3;
 
     /**保存填充的字符: key:<行, 列>, value: { char: string} */
     public fillCharPoxIdx: Map<string, { char: string }> = new Map();
@@ -33,6 +33,7 @@ export default class GamePlayMgr extends SingletonPattern<GamePlayMgr>() {
     public colorIdx: number = null;
     public answer2: string = null;
     public eventManager: EventManager = null;
+    public slope: number = null;
 
     public rncWordAnimIdx: number[] = [0];
 
@@ -40,7 +41,7 @@ export default class GamePlayMgr extends SingletonPattern<GamePlayMgr>() {
     public wordColorRandom: number[] = [0, 1, 2, 3];
     public wordLineColor: string[] = ['#9662FB', '#468AF0', '#FE8306', '#FF6745'];
 
-    public language: string = 'en';
+    public language: string = 'id';
 
     public enBoard: string[] = 'D-N-B-D-S-G-R-I-I-U-L-O-I-I-P-C-F-O-B-X-F-K-R-S-E-S-R-O-H-E-X-F-A-Z-T-B'.split('-');
     public esBoard: string[] = 'A-J-Í-G-Ó-Z-T-E-F-A-M-O-A-É-P-T-C-R-R-O-Z-O-O-R-O-S-N-A-G-O-H-C-Ü-J-Ü-Y'.split('-');
@@ -438,6 +439,35 @@ export default class GamePlayMgr extends SingletonPattern<GamePlayMgr>() {
             }
         }
         return coordinates;
+    }
+
+
+    public calculatePointOnLine(x: number): cc.Vec2 {
+        const y = this.slope * (x - this.firstWordPos.x) + this.firstWordPos.y;
+        return new cc.Vec2(x, y);
+    }
+
+    // 计算两点之间的斜率
+    calculateSlope(point1: cc.Vec2, point2: cc.Vec2): number | null {
+        const deltaX = point2.x - point1.x;
+        const deltaY = point2.y - point1.y;
+        if (deltaX === 0) {
+            return null; // 如果两点的 x 坐标相同，则斜率不存在
+        }
+        return deltaY / deltaX;
+    }
+
+    // 计算两条斜线的交点
+    calculateIntersection(slope1: number, intercept1: number, slope2: number, intercept2: number): cc.Vec2 {
+        const x = (intercept2 - intercept1) / (slope1 - slope2);
+        const y = slope1 * x + intercept1;
+        return cc.v2(x, y);
+    }
+
+    // 计算浮动斜线在固定斜线上的投影点
+    calculateProjection(slope: number, firstPos: cc.Vec2, newPoint: cc.Vec2): number {
+        const posY: number = slope * (newPoint.x - firstPos.x) + firstPos.y;
+        return posY;
     }
 }
 

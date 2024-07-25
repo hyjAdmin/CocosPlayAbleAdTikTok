@@ -2,7 +2,7 @@
  * @Description: 
  * @Author: hanyajun
  * @Date: 2024-07-23 17:55:49
- * @LastEditTime: 2024-07-24 11:31:05
+ * @LastEditTime: 2024-07-25 14:18:26
  */
 
 import { DataManager } from "../manage/DataManager";
@@ -35,8 +35,6 @@ export default class HozMainUI extends cc.Component {
     })
     private titleLayout: cc.Node = null;
 
-    /**当前点击的单词位置 */
-    private wordPosIdx: IPoint = { x: -1, y: -1 };
     /**在创建关卡的时候需要遍历棋盘，就在那个时候一起创建，避免重复一次遍历: 关卡数据 */
     public wordItemInfo: IItemInfo[][] = [];
     /** 所有节点 用坐标去取 items[x][y] */
@@ -56,6 +54,10 @@ export default class HozMainUI extends cc.Component {
     /**方块坐标：标记矩阵中每个格子位置处的坐标点 */
     public positionMap: cc.Vec2[][] = [];
     private firstWordPos: IPoint = {} as any;
+
+    private fixAngle: number = null;
+    private fixPosx: number = null;
+    private fixPosy: number = null;
 
     private StreamItemNode: cc.Node = null;
     private boardBg: cc.Node = null;
@@ -89,12 +91,21 @@ export default class HozMainUI extends cc.Component {
         this.createAnswer();
         this.createGridd();
         this.createPlate();
+        this.refreshData();
         this.btnAnim();
         this.calculateCornersAngles();
     }
 
     private refreshData(): void {
-
+        if (GamePlayMgr.ins.mode === 3) {
+            cc.tween(this.boardBg)
+                .set({ scale: 0.9 })
+                .to(1, { scale: 1 })
+                .to(1, { scale: 0.9 })
+                .union()
+                .repeatForever()
+                .start();
+        }
     }
 
     /*****************************************************************  关卡生成  *******************************************************************************/
@@ -311,72 +322,134 @@ export default class HozMainUI extends cc.Component {
         // 将一个 UI 节点世界坐标系下点转换到另一个 UI 节点 (局部) 空间坐标系，这个坐标系以锚点为原点
         const localPos: cc.Vec2 = this.Board.convertToNodeSpaceAR(cc.v2(touchUIPos.x, touchUIPos.y));
         const pos: IPoint = this.getWordPosIdx(localPos);
-        if (pos) {
-            if (this.wordPosIdx.x === pos.x && this.wordPosIdx.y === pos.y) {
-                // 触摸的是相同的单词
-                return;
-            }
-            const itemComp: ItemWord = this.mainModeItems[pos.x][pos.y];
-            const WordItemPos: cc.Vec2 = itemComp.WordItemPos;
-            const result: { angle: number; distance: number; } = this.checkPoints(this.firstWordPos.x, this.firstWordPos.y, WordItemPos.x, WordItemPos.y);
 
-            if (result) {
-                if (this.lineAngle !== Math.floor(result?.angle)) {
-                    // 另一条路线
-                    this.lineAngle = Math.floor(result?.angle);
-                    const removedElements: IPoint[] = GamePlayMgr.ins.removeAfterIndex(GamePlayMgr.ins.finishGraphicWordPos, 0);
+        if (!pos || !this.firstPos) {
+            return;
+        }
+
+        if (this.firstPos?.x === pos?.x && this.firstPos?.y === pos?.y) {
+            return;
+        }
+
+        const itemComp: ItemWord = this.mainModeItems[pos.x][pos.y];
+        let result: { angle: number; distance: number; } = {} as any;
+        const WordItemPos: cc.Vec2 = cc.v2(Math.floor(localPos.x), Math.floor(localPos.y));
+
+        const firstResult: { angle: number; distance: number; } = this.checkPoints(this.firstWordPos.x, this.firstWordPos.y, itemComp.WordItemPos.x, itemComp.WordItemPos.y);
+        if (firstResult) {
+            GamePlayMgr.ins.slope = GamePlayMgr.ins.calculateSlope(cc.v2(this.firstWordPos.x, this.firstWordPos.y), itemComp.WordItemPos);
+            const slope: number = GamePlayMgr.ins.slope;
+            let slopePosY: number = null;
+            if (slope) {
+                slopePosY = GamePlayMgr.ins.calculateProjection(slope, cc.v2(this.firstWordPos.x, this.firstWordPos.y), WordItemPos);
+            }
+            const dealMoveJoins: number = this.dealMoveJoin(itemComp);
+            if (!dealMoveJoins) {
+                this.fixPosx = WordItemPos.x;
+                if (slopePosY) {
+                    this.fixPosy = slopePosY;
+                } else {
+                    this.fixPosy = itemComp.WordItemPos.y;
+                }
+            }
+
+            if (dealMoveJoins === 3 || dealMoveJoins === 4) {
+                this.fixPosy = itemComp.WordItemPos.y;
+                this.fixPosx = WordItemPos.x;
+            }
+
+            if (dealMoveJoins === 1 || dealMoveJoins === 2) {
+                this.fixPosx = itemComp.WordItemPos.x;
+                this.fixPosy = WordItemPos.y;
+            }
+
+            if (this.fixAngle !== Math.floor(firstResult?.angle)) {
+                this.fixAngle = Math.floor(firstResult?.angle)
+            }
+            const distance: number = GamePlayMgr.ins.calculateDistance(this.firstWordPos.x, this.firstWordPos.y, WordItemPos.x, WordItemPos.y);
+            result = { angle: this.fixAngle, distance: distance };
+        }
+
+        if (result && result.distance) {
+            if (this.lineAngle !== Math.floor(result?.angle)) {
+                // 另一条路线
+                this.lineAngle = Math.floor(result?.angle);
+                const removedElements: IPoint[] = GamePlayMgr.ins.removeAfterIndex(GamePlayMgr.ins.finishGraphicWordPos, 0);
+                for (let idx = 0; idx < removedElements.length; idx++) {
+                    const itemCompRemove: ItemWord = this.mainModeItems[removedElements[idx].x][removedElements[idx].y];
+                    this.wordState(itemCompRemove, false);
+                }
+
+                for (let j = 0; j < this.twoFillPosArr.length; j++) {
+                    // 消除空白路线
+                    const twoData: IPoint[] = this.twoFillPosArr[j];
+                    this.dealFillData(twoData);
+                    this.twoFillPosArr.splice(j, 1);
+                }
+
+                const twoPot: IPoint[] = GamePlayMgr.ins.calculateLineCoordinates(this.firstPos, pos);
+                if (twoPot.length) {
+                    this.twoFillPosArr.push(twoPot);
+                    // 填充空白路线
+                    for (let i = 0; i < twoPot.length; i++) {
+                        const itemCompRemove: ItemWord = this.mainModeItems[twoPot[i].x][twoPot[i].y];
+                        const fillstate: boolean = itemCompRemove.isFillState;
+                        if (!fillstate) {
+                            this.wordState(itemCompRemove, true);
+                            GamePlayMgr.ins.finishGraphicWordPos.push({ x: twoPot[i].x, y: twoPot[i].y });
+                        }
+                    }
+                }
+            } else {
+                // 同一条路线
+                const StreamItemComp: StreamItem = this.StreamItemNode.getComponent(StreamItem);
+                StreamItemComp.setSize(result.distance);
+                StreamItemComp.setNodeRotation(result.angle);
+                StreamItemComp.setAnglePos(this.firstWordPos.x, this.firstWordPos.y, this.fixPosx, this.fixPosy);
+
+                const existingIndex: number = GamePlayMgr.ins.finishGraphicWordPos.findIndex(coord => this.equalsVec2(coord, pos));
+                if (existingIndex !== -1) {
+                    // 如果坐标已经存在，删除之后的所有坐标
+                    const removedElements: IPoint[] = GamePlayMgr.ins.removeAfterIndex(GamePlayMgr.ins.finishGraphicWordPos, existingIndex);
+                    // 移除索引 existingIndex 之后的所有元素
                     for (let idx = 0; idx < removedElements.length; idx++) {
                         const itemCompRemove: ItemWord = this.mainModeItems[removedElements[idx].x][removedElements[idx].y];
                         this.wordState(itemCompRemove, false);
                     }
-
-                    for (let j = 0; j < this.twoFillPosArr.length; j++) {
-                        // 消除空白路线
-                        const twoData: IPoint[] = this.twoFillPosArr[j];
-                        this.dealFillData(twoData);
-                        this.twoFillPosArr.splice(j, 1);
-                    }
-
-                    const twoPot: IPoint[] = GamePlayMgr.ins.calculateLineCoordinates(this.firstPos, pos);
-                    if (twoPot.length) {
-                        this.twoFillPosArr.push(twoPot);
-                        // 填充空白路线
-                        for (let i = 0; i < twoPot.length; i++) {
-                            const itemCompRemove: ItemWord = this.mainModeItems[twoPot[i].x][twoPot[i].y];
-                            const fillstate: boolean = itemCompRemove.isFillState;
-                            if (!fillstate) {
-                                this.wordState(itemCompRemove, true);
-                                GamePlayMgr.ins.finishGraphicWordPos.push({ x: twoPot[i].x, y: twoPot[i].y });
-                            }
-                        }
-                    }
-
                 } else {
-                    // 同一条路线
-                    const StreamItemComp: StreamItem = this.StreamItemNode.getComponent(StreamItem);
-                    StreamItemComp.setSize(result.distance);
-                    StreamItemComp.setNodeRotation(result.angle);
-                    StreamItemComp.setAnglePos(this.firstWordPos.x, this.firstWordPos.y, WordItemPos.x, WordItemPos.y);
-                    const existingIndex: number = GamePlayMgr.ins.finishGraphicWordPos.findIndex(coord => this.equalsVec2(coord, pos));
-                    if (existingIndex !== -1) {
-                        // 如果坐标已经存在，删除之后的所有坐标
-                        const removedElements: IPoint[] = GamePlayMgr.ins.removeAfterIndex(GamePlayMgr.ins.finishGraphicWordPos, existingIndex);
-                        // 移除索引 existingIndex 之后的所有元素
-                        for (let idx = 0; idx < removedElements.length; idx++) {
-                            const itemCompRemove: ItemWord = this.mainModeItems[removedElements[idx].x][removedElements[idx].y];
-                            this.wordState(itemCompRemove, false);
-                        }
-                    } else {
-                        // 否则添加新的坐标
-                        this.wordState(itemComp, true);
-                        GamePlayMgr.ins.finishGraphicWordPos.push(pos);
-                    }
-
-                    this.wordPosIdx.x = pos.x;
-                    this.wordPosIdx.y = pos.y;
+                    // 否则添加新的坐标
+                    this.wordState(itemComp, true);
+                    GamePlayMgr.ins.finishGraphicWordPos.push(pos);
                 }
             }
         }
+    }
+
+    private dealMoveJoin(endItemWord: ItemWord): number {
+        let dire: number = 0;
+        if (this.firstWordPos.x === endItemWord.WordItemPos.x) {
+            if ((endItemWord.WordItemPos.y - this.firstWordPos.y) > 0) {
+                // 上 
+                dire = 1;
+            } else {
+                // 下
+                dire = 2;
+            }
+        }
+
+        if (this.firstWordPos.y === endItemWord.WordItemPos.y) {
+            if ((endItemWord.WordItemPos.x - this.firstWordPos.x) > 0) {
+                // 右 
+                dire = 3;
+            } else {
+                // 左
+                dire = 4;
+            }
+        }
+
+        if (this.firstWordPos.x !== endItemWord.WordItemPos.x && this.firstWordPos.y !== endItemWord.WordItemPos.y) {
+        }
+        return dire;
     }
 
     private onTouchEnd(event: cc.Event.EventTouch): void {
@@ -428,10 +501,10 @@ export default class HozMainUI extends cc.Component {
                 this.clearMoveData();
             }
         }
-
-        this.wordPosIdx.x = -1;
-        this.wordPosIdx.y = -1;
         this.firstPos = null;
+        this.fixAngle = null;
+        this.fixPosx = null;
+        this.fixPosy = null;
         GamePlayMgr.ins.finishGraphicWordPos.length = 0;
         this.twoFillPosArr.length = 0;
         this.beginFingerAnim();
@@ -646,8 +719,25 @@ export default class HozMainUI extends cc.Component {
     private dealWordColor(state: boolean): void {
         GamePlayMgr.ins.finishGraphicWordPos.forEach((item: IPoint, idx: number, arr: IPoint[]) => {
             const itemComp: ItemWord = this.mainModeItems[item.x][item.y];
+            if (state) {
+                itemComp.isAnswerFills = true;
+            }
             this.wordState(itemComp, state);
         });
+        const itemIPoint: IPoint = GamePlayMgr.ins.finishGraphicWordPos[GamePlayMgr.ins.finishGraphicWordPos.length - 1];
+        const itemComp: ItemWord = this.mainModeItems[itemIPoint.x][itemIPoint.y];
+        if (itemComp) {
+            let StreamItemNode: cc.Node = null;
+            if (!this.StreamItemNode) {
+                StreamItemNode = cc.instantiate(LoadResMgr.ins.StreamItemMap.get('StreamItem'));
+            } else {
+                StreamItemNode = this.StreamItemNode;
+            }
+            const StreamItemComp: StreamItem = StreamItemNode.getComponent(StreamItem);
+            const distance: number = GamePlayMgr.ins.calculateDistance(this.firstWordPos.x, this.firstWordPos.y, itemComp.WordItemPos.x, itemComp.WordItemPos.y);
+            StreamItemComp.setSize(distance);
+            StreamItemComp.setAnglePos(this.firstWordPos.x, this.firstWordPos.y, itemComp.WordItemPos.x, itemComp.WordItemPos.y);
+        }
     }
 
     /**
@@ -658,8 +748,6 @@ export default class HozMainUI extends cc.Component {
         this.mainModeItems.length = 0;
         this.wordItemInfo.length = 0;
         GamePlayMgr.ins.finishGraphicWordPos.length = 0;
-        this.wordPosIdx.x = -1;
-        this.wordPosIdx.y = -1;
     }
 
     private dealDefault(): void {
@@ -706,6 +794,7 @@ export default class HozMainUI extends cc.Component {
             for (let i = 0; i < resultWord.length; i++) {
                 const data: IFillWord = resultWord[i];
                 const itemComp: ItemWord = this.mainModeItems[data.point.x][data.point.y];
+                itemComp.isAnswerFills = true;
                 this.wordState(itemComp, true);
             }
             this.dealAnswerBoard(lanAnswer[0]);
@@ -719,8 +808,13 @@ export default class HozMainUI extends cc.Component {
             itemComp.setWordColor('#FFFFFF');
             itemComp.isFillState = true;
         } else {
-            itemComp.setWordColor('#001B3A');
-            itemComp.isFillState = false;
+            if (!itemComp.isAnswerFills) {
+                itemComp.setWordColor('#001B3A');
+                itemComp.isFillState = false;
+            } else {
+                itemComp.setWordColor('#FFFFFF');
+                itemComp.isFillState = true;
+            }
         }
     }
 
@@ -750,16 +844,20 @@ export default class HozMainUI extends cc.Component {
     }
 
     public beginFingerAnim(): void {
-        this.scheduleOnce(this.setVecFinger, 2);
+        if (GamePlayMgr.ins.mode === 1) {
+            this.scheduleOnce(this.setVecFinger, 2);
+        }
     }
 
 
     public StopFingerAnim(): void {
-        cc.Tween.stopAllByTarget(this.vecFinger);
-        if (this.fingerStreamItemNode) {
-            this.fingerStreamItemNode.removeFromParent();
+        if (GamePlayMgr.ins.mode === 1) {
+            cc.Tween.stopAllByTarget(this.vecFinger);
+            if (this.fingerStreamItemNode) {
+                this.fingerStreamItemNode.removeFromParent();
+            }
+            this.vecFinger.active = false;
         }
-        this.vecFinger.active = false;
     }
 
 
@@ -818,6 +916,8 @@ export default class HozMainUI extends cc.Component {
             .to(1, { position: new cc.Vec3(endPos.x, endPos.y, 0) }, {
                 onUpdate: (target: cc.Node, ratio: number) => {
                     if (dire === 0) {
+                        const fixPosx: cc.Vec2 = this.wordPos[0].item.WordItemPos;
+                        this.lineAnim(this.fingerStreamItemNode, firstItemWord.WordItemPos, cc.v2(fixPosx.x, target.getPosition().y));
                         for (let i = 0; i < this.wordPos.length; i++) {
                             const data: {
                                 x: number;
@@ -825,12 +925,13 @@ export default class HozMainUI extends cc.Component {
                                 item: ItemWord;
                             } = this.wordPos[i];
                             if (target.getPosition().y >= data.y) {
-                                this.lineAnim(this.fingerStreamItemNode, firstItemWord.WordItemPos, data.item.WordItemPos);
                                 this.wordPos.splice(i, 1);
                                 break;
                             }
                         }
                     } else if (dire === 1) {
+                        const fixPosx: cc.Vec2 = this.wordPos[0].item.WordItemPos;
+                        this.lineAnim(this.fingerStreamItemNode, firstItemWord.WordItemPos, cc.v2(fixPosx.x, target.getPosition().y));
                         for (let i = 0; i < this.wordPos.length; i++) {
                             const data: {
                                 x: number;
@@ -838,13 +939,14 @@ export default class HozMainUI extends cc.Component {
                                 item: ItemWord;
                             } = this.wordPos[i];
                             if (target.getPosition().y <= data.y) {
-                                this.lineAnim(this.fingerStreamItemNode, firstItemWord.WordItemPos, data.item.WordItemPos);
                                 this.wordPos.splice(i, 1);
                                 break;
                             }
                         }
 
                     } else if (dire === 2) {
+                        const fixPosx: cc.Vec2 = this.wordPos[0].item.WordItemPos;
+                        this.lineAnim(this.fingerStreamItemNode, firstItemWord.WordItemPos, cc.v2(target.getPosition().x, fixPosx.y));
                         for (let i = 0; i < this.wordPos.length; i++) {
                             const data: {
                                 x: number;
@@ -859,6 +961,8 @@ export default class HozMainUI extends cc.Component {
                         }
 
                     } else if (dire === 3) {
+                        const fixPosx: cc.Vec2 = this.wordPos[0].item.WordItemPos;
+                        this.lineAnim(this.fingerStreamItemNode, firstItemWord.WordItemPos, cc.v2(target.getPosition().x, fixPosx.y));
                         for (let i = 0; i < this.wordPos.length; i++) {
                             const data: {
                                 x: number;

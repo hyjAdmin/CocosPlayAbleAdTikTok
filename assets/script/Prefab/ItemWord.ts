@@ -2,7 +2,7 @@
  * @Description: 
  * @Author: hanyajun
  * @Date: 2024-07-19 14:04:07
- * @LastEditTime: 2024-07-23 22:36:14
+ * @LastEditTime: 2024-07-25 11:53:35
  */
 
 import GamePlayMgr, { IItemInfo } from "../manage/GamePlayMgr";
@@ -26,6 +26,8 @@ export default class ItemWord extends cc.Component {
 
     private isFill: boolean = null;
 
+    private isAnswerFill = null;
+
     /**
      * @description: 方块数据初始化
      */
@@ -39,6 +41,7 @@ export default class ItemWord extends cc.Component {
         this.dCoordinates = [data.point.x, data.point.y];
         this.isFillWord = false;
         this.isFillState = false;
+        this.isAnswerFills = false;
         this.setSize();
     }
 
@@ -82,6 +85,15 @@ export default class ItemWord extends cc.Component {
     public get isFillState() {
         return this.isFill;
     }
+
+    public set isAnswerFills(state: boolean) {
+        this.isAnswerFill = state;
+    }
+
+    public get isAnswerFills() {
+        return this.isAnswerFill;
+    }
+
 
 
     /**
