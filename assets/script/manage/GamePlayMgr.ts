@@ -2,12 +2,13 @@
  * @Description: 
  * @Author: hanyajun
  * @Date: 2024-07-19 13:49:52
- * @LastEditTime: 2024-07-25 14:48:53
+ * @LastEditTime: 2024-07-25 16:54:44
  */
 
 import EventManager from "../core/EventManager";
 import SingletonPattern from "../core/SingletonPattern";
 import ItemWord from "../Prefab/ItemWord";
+import LoadResMgr from "./LoadResMgr";
 
 const { ccclass, property } = cc._decorator;
 
@@ -29,6 +30,8 @@ export default class GamePlayMgr extends SingletonPattern<GamePlayMgr>() {
     /** true: 竖屏, false: 横屏 */
     public screnType: boolean = true;
 
+    public palyWordMisc: number = 0;
+
     public defaultColorIdx: number = null;
     public colorIdx: number = null;
     public answer2: string = null;
@@ -41,7 +44,7 @@ export default class GamePlayMgr extends SingletonPattern<GamePlayMgr>() {
     public wordColorRandom: number[] = [0, 1, 2, 3];
     public wordLineColor: string[] = ['#9662FB', '#468AF0', '#FE8306', '#FF6745'];
 
-    public language: string = 'id';
+    public language: string = 'pt';
 
     public enBoard: string[] = 'D-N-B-D-S-G-R-I-I-U-L-O-I-I-P-C-F-O-B-X-F-K-R-S-E-S-R-O-H-E-X-F-A-Z-T-B'.split('-');
     public esBoard: string[] = 'A-J-Í-G-Ó-Z-T-E-F-A-M-O-A-É-P-T-C-R-R-O-Z-O-O-R-O-S-N-A-G-O-H-C-Ü-J-Ü-Y'.split('-');
@@ -468,6 +471,21 @@ export default class GamePlayMgr extends SingletonPattern<GamePlayMgr>() {
     calculateProjection(slope: number, firstPos: cc.Vec2, newPoint: cc.Vec2): number {
         const posY: number = slope * (newPoint.x - firstPos.x) + firstPos.y;
         return posY;
+    }
+
+    public palyClickMusic(idx: number): void {
+        const misc: cc.AudioClip = LoadResMgr.ins.audioClips[idx];
+        cc.audioEngine.play(misc, false, 1);
+        this.palyWordMisc += 1;
+    }
+
+    public getPalyClickMusicIdx(): number {
+        let idx: number = this.palyWordMisc;
+        if (idx > LoadResMgr.ins.audioClips.length - 1) {
+            idx = 0;
+            this.palyWordMisc = 0;
+        }
+        return idx;
     }
 }
 

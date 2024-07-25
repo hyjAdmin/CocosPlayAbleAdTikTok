@@ -2,7 +2,7 @@
  * @Description: 
  * @Author: hanyajun
  * @Date: 2024-07-19 14:04:07
- * @LastEditTime: 2024-07-25 11:53:35
+ * @LastEditTime: 2024-07-25 16:02:23
  */
 
 import GamePlayMgr, { IItemInfo } from "../manage/GamePlayMgr";
@@ -18,6 +18,8 @@ export default class ItemWord extends cc.Component {
     private point: { x: number, y: number } = {} as any;
     /**单词内容 */
     public itemInfo: IItemInfo = null;
+
+    public clickMicIdx: number = null;
 
     private data: { position: cc.Vec2, size: { width: number; height: number; }, point: { x: number, y: number }, screnType?: boolean } = null;
     private word: cc.Label = null;

@@ -2,7 +2,7 @@
  * @Description: 
  * @Author: hanyajun
  * @Date: 2024-06-27 10:43:11
- * @LastEditTime: 2024-07-25 14:21:07
+ * @LastEditTime: 2024-07-25 15:53:20
  */
 
 import { GameItemConfig, IFillWord, IItemInfo, IPoint } from "./manage/GamePlayMgr";
@@ -42,7 +42,7 @@ export default class Main extends cc.Component {
     protected onLoad(): void {
         const music: cc.AudioSource = this.node.getComponent(cc.AudioSource);
         music.play();
-
+        LoadResMgr.ins.loadMap2Res();
         LoadResMgr.ins.loadStreamItemPrefab('Prefab/StreamItem');
         LoadResMgr.ins.loadBgImageRes(`picture/${GamePlayMgr.ins.language}`);
         GamePlayMgr.ins.getLanAnswerWords(GamePlayMgr.ins.language);

@@ -2,7 +2,7 @@
  * @Description: 
  * @Author: hanyajun
  * @Date: 2024-07-23 17:55:49
- * @LastEditTime: 2024-07-25 14:18:26
+ * @LastEditTime: 2024-07-25 16:28:10
  */
 
 import { DataManager } from "../manage/DataManager";
@@ -34,6 +34,19 @@ export default class HozMainUI extends cc.Component {
         displayName: '竖屏答案词'
     })
     private titleLayout: cc.Node = null;
+
+    @property({
+        type: cc.AudioSource,
+        displayName: "FaildNode",
+    })
+    FaildNode: cc.AudioSource = null;
+
+
+    @property({
+        type: cc.AudioSource,
+        displayName: "RewardNode",
+    })
+    RewardNode: cc.AudioSource = null;
 
     /**在创建关卡的时候需要遍历棋盘，就在那个时候一起创建，避免重复一次遍历: 关卡数据 */
     public wordItemInfo: IItemInfo[][] = [];
@@ -312,6 +325,11 @@ export default class HozMainUI extends cc.Component {
                 this.wordState(itemComp, true);
                 GamePlayMgr.ins.finishGraphicWordPos.push(pos);
                 this.firstPos = pos;
+                if (GamePlayMgr.ins.mode === 1 || GamePlayMgr.ins.mode === 2) {
+                    const miscIdx: number = GamePlayMgr.ins.getPalyClickMusicIdx();
+                    GamePlayMgr.ins.palyClickMusic(miscIdx);
+                    itemComp.clickMicIdx = miscIdx;
+                }
             }
         });
         this.StopFingerAnim();
@@ -416,10 +434,23 @@ export default class HozMainUI extends cc.Component {
                         const itemCompRemove: ItemWord = this.mainModeItems[removedElements[idx].x][removedElements[idx].y];
                         this.wordState(itemCompRemove, false);
                     }
+                    if (GamePlayMgr.ins.mode === 1 || GamePlayMgr.ins.mode === 2) {
+                        const miscIdx: number = itemComp.clickMicIdx;
+                        if (miscIdx != null && removedElements.length) {
+                            GamePlayMgr.ins.palyClickMusic(miscIdx);
+                        }
+                    }
                 } else {
                     // 否则添加新的坐标
                     this.wordState(itemComp, true);
                     GamePlayMgr.ins.finishGraphicWordPos.push(pos);
+                    if (GamePlayMgr.ins.mode === 1 || GamePlayMgr.ins.mode === 2) {
+                        if (itemComp.clickMicIdx === null) {
+                            const miscIdx: number = GamePlayMgr.ins.getPalyClickMusicIdx();
+                            GamePlayMgr.ins.palyClickMusic(miscIdx);
+                            itemComp.clickMicIdx = miscIdx;
+                        }
+                    }
                 }
             }
         }
@@ -494,6 +525,7 @@ export default class HozMainUI extends cc.Component {
                     GamePlayMgr.ins.eventManager.emit('wordSuccess', {});
                     this.currLineWord1 = null;
                     this.currLineWord2 = null;
+                    this.RewardNode.play();
                 } else {
                     this.clearMoveData();
                 }
@@ -701,6 +733,7 @@ export default class HozMainUI extends cc.Component {
     }
 
     private vecWaringAnim(): void {
+        this.FaildNode.play();
         cc.Tween.stopAllByTarget(this.vecWaring);
         cc.tween(this.vecWaring)
             .set({ opacity: 0 })

@@ -2,7 +2,7 @@
  * @Description: 
  * @Author: hanyajun
  * @Date: 2024-07-19 12:01:46
- * @LastEditTime: 2024-07-23 12:57:21
+ * @LastEditTime: 2024-07-25 15:57:53
  */
 
 import SingletonPattern from "../core/SingletonPattern";
@@ -14,6 +14,7 @@ const { ccclass, property } = cc._decorator;
 export default class LoadResMgr extends SingletonPattern<LoadResMgr>() {
     public StreamItemMap: Map<string, cc.Prefab> = new Map();
     public EncWordMap: Map<number, cc.SpriteFrame> = new Map();
+    public audioClips: cc.AudioClip[] = [];
 
     /**
      * @description: 加载预制资源
@@ -57,6 +58,15 @@ export default class LoadResMgr extends SingletonPattern<LoadResMgr>() {
                 for (let i = 0; i < data.length; i++) {
                     LoadResMgr.ins.EncWordMap.set(parseInt(data[i].name, 10), data[i]);
                 }
+            }
+        });
+    }
+
+    public loadMap2Res(): void {
+        // 加载 test assets 目录下所有资源
+        cc.resources.loadDir<cc.AudioClip>("music/click", cc.AudioClip, function (error: Error, assets: cc.AudioClip[]) {
+            if (!error) {
+                LoadResMgr.ins.audioClips = assets;
             }
         });
     }

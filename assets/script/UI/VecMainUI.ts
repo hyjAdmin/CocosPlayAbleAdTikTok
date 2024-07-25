@@ -2,7 +2,7 @@
  * @Description: 
  * @Author: hanyajun
  * @Date: 2024-07-23 17:55:32
- * @LastEditTime: 2024-07-25 14:18:34
+ * @LastEditTime: 2024-07-25 16:26:31
  */
 
 import { GameItemConfig, IFillWord, IItemInfo, IPoint } from "../manage/GamePlayMgr";
@@ -41,6 +41,21 @@ export default class VecMainUI extends cc.Component {
         displayName: '竖屏答案词'
     })
     private titleLayout: cc.Node = null;
+
+
+    @property({
+        type: cc.AudioSource,
+        displayName: "FaildNode",
+    })
+    FaildNode: cc.AudioSource = null;
+
+
+    @property({
+        type: cc.AudioSource,
+        displayName: "RewardNode",
+    })
+    RewardNode: cc.AudioSource = null;
+
 
     /**在创建关卡的时候需要遍历棋盘，就在那个时候一起创建，避免重复一次遍历: 关卡数据 */
     public wordItemInfo: IItemInfo[][] = [];
@@ -320,6 +335,11 @@ export default class VecMainUI extends cc.Component {
                 this.wordState(itemComp, true);
                 GamePlayMgr.ins.finishGraphicWordPos.push(pos);
                 this.firstPos = pos;
+                if (GamePlayMgr.ins.mode === 1 || GamePlayMgr.ins.mode === 2) {
+                    const miscIdx: number = GamePlayMgr.ins.getPalyClickMusicIdx();
+                    GamePlayMgr.ins.palyClickMusic(miscIdx);
+                    itemComp.clickMicIdx = miscIdx;
+                }
             }
         });
         this.StopFingerAnim();
@@ -414,7 +434,6 @@ export default class VecMainUI extends cc.Component {
                 StreamItemComp.setSize(result.distance);
                 StreamItemComp.setNodeRotation(result.angle);
                 StreamItemComp.setAnglePos(this.firstWordPos.x, this.firstWordPos.y, this.fixPosx, this.fixPosy);
-
                 const existingIndex: number = GamePlayMgr.ins.finishGraphicWordPos.findIndex(coord => this.equalsVec2(coord, pos));
                 if (existingIndex !== -1) {
                     // 如果坐标已经存在，删除之后的所有坐标
@@ -424,10 +443,23 @@ export default class VecMainUI extends cc.Component {
                         const itemCompRemove: ItemWord = this.mainModeItems[removedElements[idx].x][removedElements[idx].y];
                         this.wordState(itemCompRemove, false);
                     }
+                    if (GamePlayMgr.ins.mode === 1 || GamePlayMgr.ins.mode === 2) {
+                        const miscIdx: number = itemComp.clickMicIdx;
+                        if (miscIdx != null && removedElements.length) {
+                            GamePlayMgr.ins.palyClickMusic(miscIdx);
+                        }
+                    }
                 } else {
                     // 否则添加新的坐标
                     this.wordState(itemComp, true);
                     GamePlayMgr.ins.finishGraphicWordPos.push(pos);
+                    if (GamePlayMgr.ins.mode === 1 || GamePlayMgr.ins.mode === 2) {
+                        if (itemComp.clickMicIdx === null) {
+                            const miscIdx: number = GamePlayMgr.ins.getPalyClickMusicIdx();
+                            GamePlayMgr.ins.palyClickMusic(miscIdx);
+                            itemComp.clickMicIdx = miscIdx;
+                        }
+                    }
                 }
             }
         }
@@ -502,6 +534,7 @@ export default class VecMainUI extends cc.Component {
                     GamePlayMgr.ins.eventManager.emit('wordSuccess', {});
                     this.currLineWord1 = null;
                     this.currLineWord2 = null;
+                    this.RewardNode.play();
                 } else {
                     this.clearMoveData();
                 }
@@ -516,6 +549,7 @@ export default class VecMainUI extends cc.Component {
         this.twoFillPosArr.length = 0;
         GamePlayMgr.ins.finishGraphicWordPos.length = 0;
         this.beginFingerAnim();
+        GamePlayMgr.ins.palyWordMisc = 0;
     }
 
     /**
@@ -700,6 +734,7 @@ export default class VecMainUI extends cc.Component {
         GamePlayMgr.ins.finishGraphicWordPos.forEach((item: IPoint, idx: number, arr: IPoint[]) => {
             const itemComp: ItemWord = this.mainModeItems[item.x][item.y];
             this.wordState(itemComp, state);
+            itemComp.clickMicIdx = null;
         });
 
         this.currLineWord1 = null;
@@ -710,6 +745,7 @@ export default class VecMainUI extends cc.Component {
     }
 
     private vecWaringAnim(): void {
+        this.FaildNode.play();
         cc.Tween.stopAllByTarget(this.vecWaring);
         cc.tween(this.vecWaring)
             .set({ opacity: 0 })
@@ -728,6 +764,7 @@ export default class VecMainUI extends cc.Component {
     private dealWordColor(state: boolean): void {
         GamePlayMgr.ins.finishGraphicWordPos.forEach((item: IPoint, idx: number, arr: IPoint[]) => {
             const itemComp: ItemWord = this.mainModeItems[item.x][item.y];
+            itemComp.clickMicIdx = null;
             if (state) {
                 itemComp.isAnswerFills = true;
             }
@@ -820,6 +857,7 @@ export default class VecMainUI extends cc.Component {
             if (!itemComp.isAnswerFills) {
                 itemComp.setWordColor('#001B3A');
                 itemComp.isFillState = false;
+                itemComp.clickMicIdx = null;
             } else {
                 itemComp.setWordColor('#FFFFFF');
                 itemComp.isFillState = true;
